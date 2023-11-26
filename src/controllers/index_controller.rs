@@ -2,14 +2,14 @@ use crate::models::index_model::{self, IndexModel};
 use crate::views::index_view::{self, IndexView};
 use gtk::{prelude::*, Button};
 
-pub struct IndexController {
-    model: IndexModel,
+pub struct IndexController<'b> {
+    model: IndexModel<'b>,
     index_view: IndexView,
     index_button: Button,
 }
 
-impl IndexController {
-    pub fn new(model: IndexModel, index_view: IndexView, index_button: Button) -> Self {
+impl<'b> IndexController<'b> {
+    pub fn new(model: IndexModel<'b>, index_view: IndexView, index_button: Button) -> Self {
         Self {
             model,
             index_view,

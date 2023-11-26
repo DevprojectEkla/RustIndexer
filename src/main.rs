@@ -5,13 +5,14 @@ mod models;
 mod views;
 mod widgets;
 
-use controllers::index_controller::IndexController;
+use controllers::main_controller::MainController;
 use core::cell::Cell;
 use custom_button::CustomButton;
 use models::index_model::{IndexModel, StoredIndexModel};
 use search_engine::index_folder;
 use std::path::Path;
 use views::index_view::{self, IndexView};
+use views::main_view::MainView;
 use widgets::screen::ScreenOutput;
 //Beware that we use the command : cargo add gtk4 --rename gtk --features v4_12_3 to add gtk4 and
 //to use it like this as gkt. We could have also do:
@@ -202,7 +203,8 @@ fn main() -> glib::ExitCode {
     let _ = gtk::init();
     // let mybuilder = Builder::from_resource("resources/termirust.gresource.xml");
     let app = Application::builder().application_id(APP_ID).build();
-    app.connect_activate(build_ui);
+    let main_window = MainView::new();
+    app.connect_activate(move |app| main_window.build_ui(&app));
 
     // let button = Button::with_label("Click me!");
     // button.connect_clicked(|_| {

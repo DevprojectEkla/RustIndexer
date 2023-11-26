@@ -5,14 +5,14 @@ use search_engine::{
 use std::{collections::HashMap, path::PathBuf};
 /// This struct is the representation of a file path and a dictionnary of term and frequencies for
 /// that file
-pub struct IndexModel {
+pub struct IndexModel<'a> {
     id: String,
     file_path: String,
-    data: PseudoHash,
+    data: &'a PseudoHash,
 }
 
-impl IndexModel {
-    pub fn new(id: String, file_path: String, data: PseudoHash) -> Self {
+impl<'a> IndexModel<'a> {
+    pub fn new(id: String, file_path: String, data: &'a PseudoHash) -> Self {
         Self {
             id,
             file_path,
@@ -43,7 +43,7 @@ impl StoredIndexModel {
         IndexModel::new(
             generate_uid(),
             path_string,
-            *data.expect("the value should be found for this key"),
+            data.expect("the value should be found for this key"),
         )
     }
 }
