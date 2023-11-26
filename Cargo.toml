@@ -1,0 +1,11 @@
+[package]
+name = "termirust"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gtk = { version = "0.7.3", package = "gtk4", features = ["v4_12"] }
+search_engine = { version = "0.1.0", path = "../search_engine" }
+vte = "0.13.0"
