@@ -1,7 +1,7 @@
 use crate::custom_button::CustomButton;
 use crate::models::index_model::StoredIndexModel;
-use crate::widgets::screen::{self, ScreenOutput};
-use gtk::prelude::*;
+use crate::widgets::screen::ScreenOutput;
+use gtk::{prelude::*, Align};
 use gtk::{Button, SearchBar, SearchEntry, Window};
 #[derive(Clone)]
 pub struct IndexView {
@@ -18,6 +18,12 @@ impl IndexView {
         let window = Window::new();
         let gtk_box = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
+            .margin_top(12)
+            .margin_bottom(12)
+            .margin_start(12)
+            .margin_end(12)
+            .spacing(12)
+            .halign(Align::Center)
             .build();
         let index_button = CustomButton::new();
         let close_button = Button::new();
@@ -46,6 +52,11 @@ impl IndexView {
         self.gtk_box.append(&self.output_screen.gtk_box);
         self.gtk_box.append(&self.close_button);
         self.window.set_child(Some(&self.gtk_box));
+
+        self.add_style();
+    }
+    fn add_style(&self) {
+        self.close_button.add_css_class("destructive-action");
     }
 
     pub fn present(&self) {
