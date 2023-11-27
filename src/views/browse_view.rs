@@ -4,7 +4,7 @@ use crate::widgets::screen::ScreenOutput;
 use gtk::{prelude::*, Align};
 use gtk::{Button, SearchBar, SearchEntry, Window};
 #[derive(Clone)]
-pub struct IndexView {
+pub struct BrowseView {
     pub window: Window,
     pub gtk_box: gtk::Box,
     pub index_button: CustomButton,
@@ -13,7 +13,7 @@ pub struct IndexView {
     pub search_entry: SearchEntry,
     pub output_screen: ScreenOutput,
 }
-impl IndexView {
+impl BrowseView {
     pub fn new(model: &StoredIndexModel) -> Self {
         let window = Window::new();
         let gtk_box = gtk::Box::builder()

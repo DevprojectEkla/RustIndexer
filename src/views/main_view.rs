@@ -2,7 +2,10 @@ use gtk::{prelude::*, Align};
 use gtk::{Application, ApplicationWindow, Button, Orientation};
 
 use crate::controllers::main_controller::MainController;
+use crate::models::index_model::StoredIndexModel;
 use crate::widgets::menu_bar::CustomBar;
+
+use super::search_view::SearchView;
 ///The MainView struct is essentially made to call build_ui() which creates the main window and
 ///and dispactch its logic to the different controllers
 //BEwARE: there is no ApplicationWindow attribute because it would prevent the application to start in the
@@ -11,7 +14,11 @@ use crate::widgets::menu_bar::CustomBar;
 //struct. A window attribute would compile but cause a Gtk **critical error** trying to create a
 //window before activating the app. The connect_start_up does not seem to work either for this.
 pub struct MainView {
+    input_view: SearchView,
+    model: StoredIndexModel,
     headerbar: CustomBar,
+    main_box: gtk::Box,
+    header_box: gtk::Box,
     gtk_box: gtk::Box,
     browse: Button,
     index: Button,
@@ -20,13 +27,32 @@ pub struct MainView {
 
 impl MainView {
     pub fn new() -> Self {
-        let gtk_box = gtk::Box::builder()
+        let model = StoredIndexModel::new();
+        let input_view = SearchView::new(&model);
+        let main_box = gtk::Box::builder()
             .orientation(Orientation::Vertical)
+            .halign(Align::Center)
             .margin_top(12)
             .margin_bottom(12)
             .margin_start(12)
             .margin_end(12)
             .spacing(12)
+            .build();
+        let header_box = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .margin_top(12)
+            .margin_bottom(12)
+            .margin_start(12)
+            .margin_end(12)
+            .halign(Align::Center)
+            .build();
+
+        let gtk_box = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .margin_top(12)
+            .margin_bottom(12)
+            .margin_start(12)
+            .margin_end(12)
             .halign(Align::Center)
             .build();
         let headerbar = CustomBar::new();
@@ -41,7 +67,11 @@ impl MainView {
             .margin_end(12)
             .build();
         Self {
+            model,
+            input_view,
             headerbar,
+            main_box,
+            header_box,
             gtk_box,
             browse,
             index,
@@ -57,16 +87,19 @@ impl MainView {
             .default_width(320)
             .default_height(200)
             .width_request(360)
-            .child(&self.gtk_box)
+            .child(&self.main_box)
             .title("TermiRust")
             .build();
-
+        self.input_view.build_ui(&win);
         self.headerbar.build();
-        self.gtk_box.append(&self.headerbar.gtk_box_header);
-        self.gtk_box.append(&self.headerbar.gtk_box_menu);
+        self.header_box.append(&self.headerbar.gtk_box_header);
+        self.header_box.append(&self.headerbar.gtk_box_menu);
         self.gtk_box.append(&self.browse);
         self.gtk_box.append(&self.index);
-        self.gtk_box.append(&self.exit_button);
+        self.main_box.append(&self.header_box);
+        self.main_box.append(&self.gtk_box);
+        self.main_box.append(&self.input_view.gtk_box);
+        self.main_box.append(&self.exit_button);
         self.add_style();
         self.set_controllers(win);
     }
@@ -78,8 +111,8 @@ impl MainView {
         let main_controller = MainController::new();
         //TODO try avoiding clone like this
         let main_controller_cloned = main_controller.clone();
-        self.index
-            .connect_clicked(move |_| main_controller.handle_index_clicked());
+        self.browse
+            .connect_clicked(move |_| main_controller.handle_browse_clicked());
 
         win.present();
 

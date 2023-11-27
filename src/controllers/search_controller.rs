@@ -1,15 +1,15 @@
-use crate::models::index_model::{self, IndexModel};
-use crate::views::index_view::{self, IndexView};
+use crate::models::index_model::IndexModel;
+use crate::views::search_view::SearchView;
 use gtk::{prelude::*, Button};
 
-pub struct IndexController<'b> {
+pub struct SearchController<'b> {
     model: IndexModel<'b>,
-    index_view: IndexView,
+    index_view: SearchView,
     index_button: Button,
 }
 
-impl<'b> IndexController<'b> {
-    pub fn new(model: IndexModel<'b>, index_view: IndexView, index_button: Button) -> Self {
+impl<'b> SearchController<'b> {
+    pub fn new(model: IndexModel<'b>, index_view: SearchView, index_button: Button) -> Self {
         Self {
             model,
             index_view,
