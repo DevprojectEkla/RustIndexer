@@ -1,11 +1,14 @@
-use gtk::{prelude::*, Align};
+use gtk::builders::SearchEntryBuilder;
+use gtk::glib::SignalHandlerId;
+use gtk::{prelude::*, Align, SearchEntry};
 use gtk::{Application, ApplicationWindow, Button, Orientation};
 
 use crate::controllers::main_controller::MainController;
+use crate::controllers::search_controller::SearchController;
 use crate::models::index_model::StoredIndexModel;
 use crate::widgets::menu_bar::CustomBar;
 
-use super::search_view::SearchView;
+use super::search_view::{self, SearchView};
 ///The MainView struct is essentially made to call build_ui() which creates the main window and
 ///and dispactch its logic to the different controllers
 //BEwARE: there is no ApplicationWindow attribute because it would prevent the application to start in the
@@ -28,7 +31,7 @@ pub struct MainView {
 impl MainView {
     pub fn new() -> Self {
         let model = StoredIndexModel::new();
-        let input_view = SearchView::new(&model);
+        let input_view = SearchView::new();
         let main_box = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .halign(Align::Center)
@@ -109,13 +112,19 @@ impl MainView {
     }
     fn set_controllers(&self, win: ApplicationWindow) {
         let main_controller = MainController::new();
+        let search_controller = SearchController::new(&self.input_view);
+        search_controller.handle_activate();
+        search_controller.handle_click_search_button();
         //TODO try avoiding clone like this
         let main_controller_cloned = main_controller.clone();
         self.browse
             .connect_clicked(move |_| main_controller.handle_browse_clicked());
-
+        // run_control(&self.input_view.search_entry);
+        // self.input_view.perform();
+        // .search_entry
+        // .connect_activate(move |en| search_controller.run(en));
+        win.set_decorated(true);
         win.present();
-
         self.exit_button
             .connect_clicked(move |_| main_controller_cloned.handle_exit_clicked(&win));
     }

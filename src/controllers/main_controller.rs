@@ -28,6 +28,9 @@ impl MainController {
 
         println!("index window successfully build");
     }
+    pub fn handle_search_clicked(&self, button: &Button) {
+        button.connect_clicked(|_| println!("search button clicked"));
+    }
     pub fn handle_exit_clicked(&self, win: &ApplicationWindow) {
         win.destroy();
         println!("Exiting now...");

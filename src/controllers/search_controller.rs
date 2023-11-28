@@ -1,26 +1,25 @@
-use crate::models::index_model::IndexModel;
+use crate::models::index_model::{IndexModel, StoredIndexModel};
 use crate::views::search_view::SearchView;
-use gtk::{prelude::*, Button};
+use gtk::{glib::SignalHandlerId, prelude::*, Button, SearchEntry};
 
-pub struct SearchController<'b> {
-    model: IndexModel<'b>,
-    index_view: SearchView,
-    index_button: Button,
+pub struct SearchController<'a> {
+    view: &'a SearchView,
 }
 
-impl<'b> SearchController<'b> {
-    pub fn new(model: IndexModel<'b>, index_view: SearchView, index_button: Button) -> Self {
-        Self {
-            model,
-            index_view,
-            index_button,
-        }
+impl<'a> SearchController<'a> {
+    pub fn new(view: &'a SearchView) -> Self {
+        Self { view }
     }
 
-    pub fn run(&self) {
-        self.index_view.search_entry.connect_activate(|entry| {
-            let input = entry.text();
-            print!("{}", input);
-        });
+    pub fn handle_activate(&self) -> SignalHandlerId {
+        self.view
+            .search_entry
+            .connect_activate(|en| println!("{}", en.text()))
+    }
+
+    pub fn handle_click_search_button(&self) -> SignalHandlerId {
+        self.view
+            .search_button
+            .connect_clicked(move |button| println!("test:"))
     }
 }
