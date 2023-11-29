@@ -1,6 +1,4 @@
-use gtk::builders::SearchEntryBuilder;
-use gtk::glib::SignalHandlerId;
-use gtk::{prelude::*, Align, SearchEntry};
+use gtk::{prelude::*, Align, Label, SearchEntry};
 use gtk::{Application, ApplicationWindow, Button, Orientation};
 
 use crate::controllers::main_controller::MainController;
@@ -8,7 +6,7 @@ use crate::controllers::search_controller::SearchController;
 use crate::models::index_model::StoredIndexModel;
 use crate::widgets::menu_bar::CustomBar;
 
-use super::search_view::{self, SearchView};
+use super::search_view::SearchView;
 ///The MainView struct is essentially made to call build_ui() which creates the main window and
 ///and dispactch its logic to the different controllers
 //BEwARE: there is no ApplicationWindow attribute because it would prevent the application to start in the
@@ -18,11 +16,13 @@ use super::search_view::{self, SearchView};
 //window before activating the app. The connect_start_up does not seem to work either for this.
 pub struct MainView {
     input_view: SearchView,
+    main_controller: MainController,
     model: StoredIndexModel,
     headerbar: CustomBar,
     main_box: gtk::Box,
     header_box: gtk::Box,
     gtk_box: gtk::Box,
+    folder_label: Label,
     browse: Button,
     index: Button,
     exit_button: Button,
@@ -30,6 +30,7 @@ pub struct MainView {
 
 impl MainView {
     pub fn new() -> Self {
+        let main_controller = MainController::new();
         let model = StoredIndexModel::new();
         let input_view = SearchView::new();
         let main_box = gtk::Box::builder()
@@ -40,14 +41,17 @@ impl MainView {
             .margin_start(12)
             .margin_end(12)
             .spacing(12)
+            // .vexpand(true)
             .build();
         let header_box = gtk::Box::builder()
-            .orientation(Orientation::Horizontal)
+            .orientation(Orientation::Vertical)
             .margin_top(12)
             .margin_bottom(12)
             .margin_start(12)
             .margin_end(12)
+            .spacing(12)
             .halign(Align::Center)
+            .vexpand(true) //huge gap because of this
             .build();
 
         let gtk_box = gtk::Box::builder()
@@ -59,6 +63,7 @@ impl MainView {
             .halign(Align::Center)
             .build();
         let headerbar = CustomBar::new();
+        let folder_label = Label::new(Some(""));
         let browse = Button::builder().label("parcourir").build();
         let index = Button::builder().label("index folder").build();
 
@@ -70,12 +75,14 @@ impl MainView {
             .margin_end(12)
             .build();
         Self {
+            main_controller,
             model,
             input_view,
             headerbar,
             main_box,
             header_box,
             gtk_box,
+            folder_label,
             browse,
             index,
             exit_button,
@@ -87,16 +94,17 @@ impl MainView {
     pub fn build_ui(&self, app: &Application) {
         let win = ApplicationWindow::builder()
             .application(app)
-            .default_width(320)
+            .default_width(160)
             .default_height(200)
-            .width_request(360)
+            // .width_request(360)
             .child(&self.main_box)
             .title("TermiRust")
+            .show_menubar(true)
             .build();
         self.input_view.build_ui(&win);
         self.headerbar.build();
         self.header_box.append(&self.headerbar.gtk_box_header);
-        self.header_box.append(&self.headerbar.gtk_box_menu);
+        // self.header_box.append(&self.headerbar.gtk_box_menu);
         self.gtk_box.append(&self.browse);
         self.gtk_box.append(&self.index);
         self.main_box.append(&self.header_box);
@@ -111,22 +119,16 @@ impl MainView {
         self.index.add_css_class("suggested-action")
     }
     fn set_controllers(&self, win: ApplicationWindow) {
-        let main_controller = MainController::new();
         let search_controller = SearchController::new(&self.input_view);
         search_controller.handle_activate();
         search_controller.handle_click_search_button();
-        //TODO try avoiding clone like this
-        let main_controller_cloned = main_controller.clone();
-        self.browse
-            .connect_clicked(move |_| main_controller.handle_browse_clicked());
-        // run_control(&self.input_view.search_entry);
-        // self.input_view.perform();
-        // .search_entry
-        // .connect_activate(move |en| search_controller.run(en));
-        win.set_decorated(true);
+        self.main_controller
+            .set_label_current_index_folder(self.folder_label, &self.browse);
+        self.main_controller.handle_browse_clicked(&self.browse);
+        self.main_controller
+            .handle_exit_clicked(&self.exit_button, &win);
+        // win.set_decorated(true);
         win.present();
-        self.exit_button
-            .connect_clicked(move |_| main_controller_cloned.handle_exit_clicked(&win));
     }
     pub fn connect_index_clicked<F: Fn() + 'static>(&self, callback: F) {
         self.index.connect_clicked(move |_| callback());
