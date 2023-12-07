@@ -1,4 +1,4 @@
-use gtk::{glib::SignalHandlerId, prelude::*, ApplicationWindow, Button, Orientation};
+use gtk::{glib::SignalHandlerId, prelude::*, ApplicationWindow, Button, Label, Orientation};
 
 use crate::{
     models::index_model::StoredIndexModel,
@@ -16,6 +16,7 @@ impl MainController {
     pub fn new() -> Self {
         Self {}
     }
+    pub fn set_label_current_index_folder(&self, label: &Label, button: &Button) {}
     pub fn handle_browse_clicked(&self, browse: &Button) -> SignalHandlerId {
         browse.connect_clicked(|_| {
             let model = StoredIndexModel::new();

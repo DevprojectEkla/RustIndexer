@@ -123,7 +123,7 @@ impl MainView {
         search_controller.handle_activate();
         search_controller.handle_click_search_button();
         self.main_controller
-            .set_label_current_index_folder(self.folder_label, &self.browse);
+            .set_label_current_index_folder(&self.folder_label, &self.browse);
         self.main_controller.handle_browse_clicked(&self.browse);
         self.main_controller
             .handle_exit_clicked(&self.exit_button, &win);
