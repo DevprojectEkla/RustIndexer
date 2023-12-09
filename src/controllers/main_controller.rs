@@ -1,4 +1,8 @@
-use gtk::{glib::SignalHandlerId, prelude::*, ApplicationWindow, Button, Label, Orientation};
+use std::{cell::RefCell, rc::Rc};
+
+use gtk::{
+    glib::SignalHandlerId, prelude::*, ApplicationWindow, Button, Label, Orientation, Window,
+};
 
 use crate::{
     models::index_model::StoredIndexModel,
@@ -8,6 +12,13 @@ use crate::{
         search_view::SearchView,
     },
 };
+
+pub trait Controller {
+    fn handle_activate(&self, window: Window, callback: fn());
+    fn handle_click(&self, button: &Button, callback: fn());
+    fn handle_exit(&self);
+}
+
 #[derive(Clone)]
 pub struct MainController {
     // view: MainView,
@@ -16,18 +27,22 @@ impl MainController {
     pub fn new() -> Self {
         Self {}
     }
-    pub fn set_label_current_index_folder(&self, label: &Label, button: &Button) {}
-    pub fn handle_browse_clicked(&self, browse: &Button) -> SignalHandlerId {
-        browse.connect_clicked(|_| {
-            let model = StoredIndexModel::new();
-            let browse_view = BrowseView::new(&model);
-            browse_view.build_ui();
-            browse_view.window.present();
-            browse_view
-                .clone()
-                .close_button
-                .connect_clicked(move |_| browse_view.destroy());
 
+    pub fn set_label_current_index_folder(&self, label: &Label, button: &Button) {}
+    pub fn handle_browse_clicked(
+        &self,
+        browse: &Button,
+        view: Rc<RefCell<BrowseView>>,
+    ) -> SignalHandlerId {
+        browse.connect_clicked(move |_| {
+            let clone = view.clone();
+            let borrowed_view = view.borrow();
+
+            borrowed_view.build_ui();
+            borrowed_view.window.present();
+            borrowed_view
+                .close_button
+                .connect_clicked(move |_| clone.borrow().destroy());
             println!("index window successfully build");
         })
     }
@@ -41,5 +56,13 @@ impl MainController {
             println!("Exiting now...");
             println!("::Bye Bye::");
         })
+    }
+}
+impl Controller for MainController {
+    fn handle_activate(&self, window: Window, callback: fn()) {}
+    fn handle_exit(&self) {}
+    fn handle_click(&self, button: &Button, callback: fn()) {
+        button.connect_clicked(move |_| callback());
+        println!("controller trait method")
     }
 }

@@ -1,16 +1,20 @@
 use crate::models::index_model::StoredIndexModel;
 use crate::widgets::screen::ScreenOutput;
 use core::cell::Cell;
+use gtk::gio::ffi::GFileInfo;
 use gtk::gio::{Cancellable, FileQueryInfoFlags};
 use gtk::glib::ToValue;
 use gtk::{glib::*, Adjustment, DirectoryList, Label, ScrolledWindow};
 use gtk::{prelude::*, Align};
 use gtk::{Button, SearchBar, SearchEntry, Window};
 use gtk::{ListItem, ListView, MultiSelection, SignalListItemFactory};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 #[derive(Clone)]
 pub struct BrowseView {
     pub window: Window,
+    pub label_selected_folder: Label,
     pub scroll_window: ScrolledWindow,
     pub gtk_box: gtk::Box,
     pub browser: ListView,
@@ -22,10 +26,76 @@ pub struct BrowseView {
 impl BrowseView {
     pub fn new(model: &StoredIndexModel) -> Self {
         let window = Window::new();
+        let label_selected_folder = Label::new(Some("select a folder"));
+
         let scroll_window = ScrolledWindow::builder().min_content_height(400).build();
-        let file = gtk::gio::File::for_path(Path::new("/home/ekla/"));
+        // let browser = ListView::new(Some(multi_selection), Some(factory));
+        let browser = ListView::builder()
+            .vexpand_set(true)
+            .halign(Align::Start)
+            .show_separators(true)
+            .enable_rubberband(false)
+            .build();
+        // |widget, item| {
+        // let model = widget.model();
+        // let display = item.count_ones();
+        // println!("{:?},item:{}", model, display)
+        // });
+        let gtk_box = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .margin_top(12)
+            .margin_bottom(12)
+            .margin_start(12)
+            .margin_end(12)
+            .spacing(12)
+            .halign(Align::Center)
+            .build();
+        let close_button = Button::new();
+        let search_bar = SearchBar::new();
+        let search_entry = SearchEntry::new();
+        let output_screen = ScreenOutput::new();
+
+        Self {
+            window,
+            label_selected_folder,
+            scroll_window,
+            browser,
+            gtk_box,
+            close_button,
+            search_bar,
+            search_entry,
+            output_screen,
+        }
+    }
+
+    pub fn build_ui(&self) {
+        self.close_button.set_label("Close");
+        self.search_bar.connect_entry(&self.search_entry);
+        self.search_bar.set_key_capture_widget(Some(&self.window));
+        self.gtk_box.append(&self.search_entry);
+        self.gtk_box.append(&self.search_bar);
+        self.gtk_box.append(&self.label_selected_folder);
+        self.gtk_box.append(&self.scroll_window);
+        self.scroll_window.set_child(Some(&self.browser));
+        self.gtk_box.append(&self.close_button);
+        self.window.set_child(Some(&self.gtk_box));
+
+        self.setup_browser();
+
+        self.add_style();
+    }
+
+    fn setup_browser(&self) {
+        let callback = self.selection_callback().clone();
+        let file = gtk::gio::File::for_path(Path::new(
+            std::env::var("HOME")
+                .unwrap_or_else(|_| "/home".to_string())
+                .as_str(),
+        ));
         let directories = DirectoryList::new(Some("standard::name"), Some(&file));
         let multi_selection = MultiSelection::new(Some(directories));
+        let cloned_selection = multi_selection.clone();
+
         let factory = SignalListItemFactory::new();
         let i = Cell::new(0);
         factory.connect_setup(move |_, list_item| {
@@ -71,17 +141,17 @@ impl BrowseView {
                 Cancellable::NONE,
             ); //this is a Result<FileIterator,Err>
             let mut name_list = vec![];
-            // Weird stuff above: we need to consume the Iterator with collect() to have the map closure doing its
+            // Weird stuff below: we need to consume the Iterator with collect() to have the map closure doing its
             // job. Why .map() to do that? we could iterate over the info iterator via a for loop, but we already are in
             // a for loop with connect_bind(), then starting a new one on info will create x for loops where x is the
             // number of item in the ListItem
             // just check it out with a simple print here, you'll get x print:
             // ex:
-            if j.get() == 0 {
-                println!("first iteration")
-            } else {
-                println!("iteration {}:", j.get())
-            }
+            // if j.get() == 0 {
+            //     println!("first iteration")
+            // } else {
+            //     println!("iteration {}:", j.get())
+            // }
             //the following populates our name_list but does not return anything
             //usefull
             let _: Vec<()> = info
@@ -116,60 +186,26 @@ impl BrowseView {
             }
             j.set(j.get() + 1);
         });
-        // let browser = ListView::new(Some(multi_selection), Some(factory));
-        let browser = ListView::builder()
-            .vexpand_set(true)
-            .halign(Align::Start)
-            .show_separators(true)
-            .enable_rubberband(false)
-            .build();
-        browser.set_model(Some(&multi_selection));
-        browser.set_factory(Some(&factory));
 
-        browser.set_margin_bottom(2);
-        // |widget, item| {
-        // let model = widget.model();
-        // let display = item.count_ones();
-        // println!("{:?},item:{}", model, display)
-        // });
-        let gtk_box = gtk::Box::builder()
-            .orientation(gtk::Orientation::Vertical)
-            .margin_top(12)
-            .margin_bottom(12)
-            .margin_start(12)
-            .margin_end(12)
-            .spacing(12)
-            .halign(Align::Center)
-            .build();
-        let close_button = Button::new();
-        let search_bar = SearchBar::new();
-        let search_entry = SearchEntry::new();
-        let output_screen = ScreenOutput::new();
+        let label_selected = Rc::new(RefCell::new(self.label_selected_folder.clone()));
+        cloned_selection.connect_selection_changed(move |selection, row, range| {
+            println!("selection:{},row:{},range:{}", selection, row, range);
 
-        Self {
-            window,
-            scroll_window,
-            browser,
-            gtk_box,
-            close_button,
-            search_bar,
-            search_entry,
-            output_screen,
-        }
+            println!(
+                " selection.item = {:?}",
+                selection.item(row).expect("ok").to_value()
+            );
+            label_selected.borrow().set_text("clicked");
+            callback
+        });
+
+        self.browser.set_model(Some(&multi_selection));
+        self.browser.set_factory(Some(&factory));
+
+        self.browser.set_margin_bottom(2);
     }
-
-    pub fn build_ui(&self) {
-        self.close_button.set_label("Close");
-        self.search_bar.connect_entry(&self.search_entry);
-        self.search_bar.set_key_capture_widget(Some(&self.window));
-        self.gtk_box.append(&self.search_entry);
-        self.gtk_box.append(&self.search_bar);
-        self.gtk_box.append(&self.scroll_window);
-        self.scroll_window.set_child(Some(&self.browser));
-        self.gtk_box.append(&self.close_button);
-        self.window.set_child(Some(&self.gtk_box));
-
-        self.add_style();
+    fn selection_callback(&self) {
+        println!("selection changed")
     }
     fn add_style(&self) {
         self.close_button.add_css_class("destructive-action");

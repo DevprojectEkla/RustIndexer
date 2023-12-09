@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gtk::{prelude::*, Align, Label, SearchEntry};
 use gtk::{Application, ApplicationWindow, Button, Orientation};
 
@@ -6,6 +9,7 @@ use crate::controllers::search_controller::SearchController;
 use crate::models::index_model::StoredIndexModel;
 use crate::widgets::menu_bar::CustomBar;
 
+use super::browse_view::BrowseView;
 use super::search_view::SearchView;
 ///The MainView struct is essentially made to call build_ui() which creates the main window and
 ///and dispactch its logic to the different controllers
@@ -18,6 +22,7 @@ pub struct MainView {
     input_view: SearchView,
     main_controller: MainController,
     model: StoredIndexModel,
+    browse_view: BrowseView,
     headerbar: CustomBar,
     main_box: gtk::Box,
     header_box: gtk::Box,
@@ -32,6 +37,8 @@ impl MainView {
     pub fn new() -> Self {
         let main_controller = MainController::new();
         let model = StoredIndexModel::new();
+        let browse_view = BrowseView::new(&model);
+
         let input_view = SearchView::new();
         let main_box = gtk::Box::builder()
             .orientation(Orientation::Vertical)
@@ -76,6 +83,7 @@ impl MainView {
             .build();
         Self {
             main_controller,
+            browse_view,
             model,
             input_view,
             headerbar,
@@ -120,11 +128,15 @@ impl MainView {
     }
     fn set_controllers(&self, win: ApplicationWindow) {
         let search_controller = SearchController::new(&self.input_view);
+
         search_controller.handle_activate();
         search_controller.handle_click_search_button();
         self.main_controller
             .set_label_current_index_folder(&self.folder_label, &self.browse);
-        self.main_controller.handle_browse_clicked(&self.browse);
+        self.main_controller.handle_browse_clicked(
+            &self.browse,
+            Rc::new(RefCell::new(self.browse_view.clone())),
+        );
         self.main_controller
             .handle_exit_clicked(&self.exit_button, &win);
         // win.set_decorated(true);
