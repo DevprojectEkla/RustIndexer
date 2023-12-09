@@ -22,7 +22,7 @@ pub struct MainView {
     input_view: SearchView,
     main_controller: MainController,
     model: StoredIndexModel,
-    browse_view: BrowseView,
+    // browse_view: BrowseView,
     headerbar: CustomBar,
     main_box: gtk::Box,
     header_box: gtk::Box,
@@ -35,9 +35,9 @@ pub struct MainView {
 
 impl MainView {
     pub fn new() -> Self {
-        let main_controller = MainController::new();
         let model = StoredIndexModel::new();
-        let browse_view = BrowseView::new(&model);
+        let main_controller = MainController::new(&model);
+        // let browse_view = BrowseView::new(&model);
 
         let input_view = SearchView::new();
         let main_box = gtk::Box::builder()
@@ -83,7 +83,7 @@ impl MainView {
             .build();
         Self {
             main_controller,
-            browse_view,
+            // browse_view,
             model,
             input_view,
             headerbar,
@@ -133,10 +133,7 @@ impl MainView {
         search_controller.handle_click_search_button();
         self.main_controller
             .set_label_current_index_folder(&self.folder_label, &self.browse);
-        self.main_controller.handle_browse_clicked(
-            &self.browse,
-            Rc::new(RefCell::new(self.browse_view.clone())),
-        );
+        self.main_controller.handle_browse_clicked(&self.browse);
         self.main_controller
             .handle_exit_clicked(&self.exit_button, &win);
         // win.set_decorated(true);

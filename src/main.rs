@@ -3,6 +3,7 @@ mod config;
 mod controllers;
 mod custom_button;
 mod models;
+mod types;
 mod views;
 mod widgets;
 
