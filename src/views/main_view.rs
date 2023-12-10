@@ -21,7 +21,7 @@ use super::search_view::SearchView;
 pub struct MainView {
     input_view: SearchView,
     main_controller: MainController,
-    model: StoredIndexModel,
+    model: Option<StoredIndexModel>,
     // browse_view: BrowseView,
     headerbar: CustomBar,
     main_box: gtk::Box,
@@ -35,8 +35,9 @@ pub struct MainView {
 
 impl MainView {
     pub fn new() -> Self {
-        let model = StoredIndexModel::new();
-        let main_controller = MainController::new(&model);
+        // let model = StoredIndexModel::new();
+        let model = None;
+        let main_controller = MainController::new();
         // let browse_view = BrowseView::new(&model);
 
         let input_view = SearchView::new();

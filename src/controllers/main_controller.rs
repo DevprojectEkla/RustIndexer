@@ -17,29 +17,52 @@ use crate::{
 pub trait Controller {
     fn handle_activate(&self, window: Window, callback: fn());
     fn handle_click(&self, button: &Button, callback: fn());
-    fn handle_exit(&self, button: &Button, window: &Window);
+    fn handle_close(&self, button: &Button, window: &Window) {
+        let cloned_window = window.clone();
+
+        button.connect_clicked(move |_| cloned_window.destroy());
+    }
 }
 
 #[derive(Clone)]
 pub struct MainController {
     // main_view: MainView,
-    browse_view: BrowseView,
+    browse_view: Option<BrowseView>,
+    model: StoredIndexModel,
 }
 impl MainController {
-    pub fn new(model: &StoredIndexModel) -> Self {
-        let browse_view = BrowseView::new(model);
-        Self { browse_view }
+    pub fn new() -> Self {
+        let model = StoredIndexModel::new();
+        // let browse_view = BrowseView::new(model);
+        Self {
+            browse_view: None,
+            model,
+        }
     }
-
+    fn browse_init(&mut self) {
+        // if self.browse_view.is_none()
+        self.browse_view = Some(BrowseView::new(&self.model));
+    }
     pub fn set_label_current_index_folder(&self, label: &Label, button: &Button) {}
     pub fn handle_browse_clicked(&self, browse: &Button) -> SignalHandlerId {
-        self.handle_exit(&self.browse_view.close_button, &self.browse_view.window);
-
         let cloned_view = self.browse_view.clone();
-
+        // let borrowed_view = Rc::new(RefCell::new(self.browse_view.clone()));
+        let cloned_self = Rc::new(RefCell::new(self.clone()));
         browse.connect_clicked(move |_| {
-            cloned_view.build_ui();
-            cloned_view.window.present();
+            cloned_self.borrow_mut().browse_init();
+            cloned_self
+                .borrow_mut()
+                .browse_view
+                .as_mut()
+                .expect("")
+                .build_ui();
+            cloned_self
+                .borrow_mut()
+                .browse_view
+                .as_mut()
+                .expect("")
+                .window
+                .present();
         })
     }
     pub fn handle_search_clicked(&self, button: &Button) {
@@ -56,9 +79,10 @@ impl MainController {
 }
 impl Controller for MainController {
     fn handle_activate(&self, window: Window, callback: fn()) {}
-    fn handle_exit(&self, button: &Button, window: &Window) {
-        let cloned = window.clone();
-        button.connect_clicked(move |_| cloned.destroy());
+    fn handle_close(&self, button: &Button, window: &Window) {
+        let cloned_window = window.clone();
+
+        button.connect_clicked(move |_| cloned_window.destroy());
     }
 
     fn handle_click(&self, button: &Button, callback: fn()) {

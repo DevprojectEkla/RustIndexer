@@ -1,3 +1,4 @@
+use crate::controllers::main_controller::Controller;
 use crate::models::index_model::StoredIndexModel;
 use crate::widgets::screen::ScreenOutput;
 use core::cell::Cell;
@@ -31,7 +32,10 @@ impl Data for BrowseView {
         *self.info_list.borrow_mut() = iterator.collect();
     }
 }
-
+impl Controller for BrowseView {
+    fn handle_click(&self, button: &Button, callback: fn()) {}
+    fn handle_activate(&self, window: Window, callback: fn()) {}
+}
 #[derive(Clone)]
 pub struct BrowseView {
     pub window: Window,
@@ -58,11 +62,6 @@ impl BrowseView {
             .show_separators(true)
             .enable_rubberband(false)
             .build();
-        // |widget, item| {
-        // let model = widget.model();
-        // let display = item.count_ones();
-        // println!("{:?},item:{}", model, display)
-        // });
         let gtk_box = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .margin_top(12)
@@ -103,6 +102,11 @@ impl BrowseView {
         self.scroll_window.set_child(Some(&self.browser));
         self.gtk_box.append(&self.close_button);
         self.window.set_child(Some(&self.gtk_box));
+        self.window.present();
+        // let clone = self.window.clone();
+        // self.close_button.connect_clicked(move |_| clone.destroy());
+
+        self.handle_close(&self.close_button, &self.window);
 
         self.setup_browser();
 
@@ -151,19 +155,53 @@ impl BrowseView {
             list.set_child(Some(&item));
             // println!("attributes => {:?}, item0: {:?}", attributes, v_item0);
         });
-        let j = Cell::new(0);
         //BEWARE:  after the first iteration on all items, connect_bind
         // iterates again each time we click on an item, but one click can generate one or more
         // iteration (don't know why exactly)
+        self.handle_connect_bind(&factory, file);
+        self.handle_selection(&cloned_selection);
+
+        self.browser.set_model(Some(&single_selection));
+        self.browser.set_factory(Some(&factory));
+
+        self.browser.set_margin_bottom(2);
+    }
+    fn selection_callback(&self) {
+        println!("{:?}", self.info_list);
+        println!("selection changed")
+    }
+    fn add_style(&self) {
+        self.close_button.add_css_class("destructive-action");
+    }
+    fn handle_selection(&self, selection: &SingleSelection) {
+        let self_cloned = self.clone();
+        let label_selected = self.label_selected_folder.clone();
+
+        selection.connect_selection_changed(move |selection, _, _| {
+            let index: usize = selection.selected() as usize; // the selected method returns a u32
+                                                              // which somehow cannot be use for
+                                                              // indexing our [FileInfo] list
+            self_cloned.selection_callback();
+            // println!("selection:{},row:{},range:{}", selection, row, range);
+            label_selected.set_text(
+                self_cloned.info_list.borrow()[index]
+                    .name()
+                    .to_str()
+                    .expect("should be a file name for each file"),
+            );
+        });
+    }
+    fn handle_connect_bind(&self, factory: &SignalListItemFactory, file: gtk::gio::File) {
         let cloned_self = Rc::new(RefCell::new(self.clone()));
+        let j = Cell::new(0);
         factory.connect_bind(move |_, list_item| {
-            let cloned_cloned_list = clone_list.clone();
             // the first var in closure is the factory
             // itself
             // the whole closure act as a for loop that iterates on each item
             // of the list
             // we need to grab the GFileInfo available directly by calling a special method on the
             // directory "file" define for the ListDirectory
+            // Gtk names it a file, this is the attribute of the DirectoryList
             let info = file.enumerate_children(
                 "standard::name",
                 FileQueryInfoFlags::all(),
@@ -215,38 +253,7 @@ impl BrowseView {
             }
             j.set(j.get() + 1);
         });
-
-        let self_cloned = self.clone();
-        let label_selected = self.label_selected_folder.clone();
-
-        cloned_selection.connect_selection_changed(move |selection, row, range| {
-            let index: usize = selection.selected() as usize; // the selected method returns a u32
-                                                              // which somehow cannot be use for
-                                                              // indexing our [FileInfo] list
-            self_cloned.selection_callback();
-            // println!("selection:{},row:{},range:{}", selection, row, range);
-            label_selected.set_text(
-                self_cloned.info_list.borrow()[index]
-                    .name()
-                    .to_str()
-                    .expect("should be a file name for each file"),
-            );
-            callback
-        });
-
-        self.browser.set_model(Some(&single_selection));
-        self.browser.set_factory(Some(&factory));
-
-        self.browser.set_margin_bottom(2);
     }
-    fn selection_callback(&self) {
-        println!("{:?}", self.info_list);
-        println!("selection changed")
-    }
-    fn add_style(&self) {
-        self.close_button.add_css_class("destructive-action");
-    }
-
     pub fn present(&self) {
         self.window.clone().present();
     }

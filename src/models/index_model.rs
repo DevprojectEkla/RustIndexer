@@ -20,7 +20,7 @@ impl<'a> IndexModel<'a> {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct StoredIndexModel {
     id: String,
     data: IndexDoc,
