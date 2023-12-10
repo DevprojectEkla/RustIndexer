@@ -32,10 +32,7 @@ impl Data for BrowseView {
         *self.info_list.borrow_mut() = iterator.collect();
     }
 }
-impl Controller for BrowseView {
-    fn handle_click(&self, button: &Button, callback: fn()) {}
-    fn handle_activate(&self, window: Window, callback: fn()) {}
-}
+impl Controller for BrowseView {}
 #[derive(Clone)]
 pub struct BrowseView {
     pub window: Window,
@@ -176,7 +173,6 @@ impl BrowseView {
     fn handle_selection(&self, selection: &SingleSelection) {
         let self_cloned = self.clone();
         let label_selected = self.label_selected_folder.clone();
-
         selection.connect_selection_changed(move |selection, _, _| {
             let index: usize = selection.selected() as usize; // the selected method returns a u32
                                                               // which somehow cannot be use for
@@ -189,6 +185,11 @@ impl BrowseView {
                     .to_str()
                     .expect("should be a file name for each file"),
             );
+            // if let Some(window) = self_cloned.window() {
+            //     println!("parent : {:?}", window)
+            // } else {
+            //     println!("NO PARENT")
+            // }
         });
     }
     fn handle_connect_bind(&self, factory: &SignalListItemFactory, file: gtk::gio::File) {

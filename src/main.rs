@@ -7,6 +7,8 @@ mod types;
 mod views;
 mod widgets;
 
+use std::{cell::RefCell, rc::Rc};
+
 use config::APP_ID;
 use views::main_view::MainView;
 //Beware that we use the command : cargo add gtk4 --rename gtk --features v4_12_3 to add gtk4 and
@@ -21,7 +23,7 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
     // Set keyboard accelerator to trigger "win.close".
     app.set_accels_for_action("win.close", &["<Ctrl>W"]);
-    let main_window = MainView::new();
-    app.connect_activate(move |app| main_window.build_ui(&app));
+    let main_window = Rc::new(RefCell::new(MainView::new()));
+    app.connect_activate(move |app| main_window.borrow_mut().build_ui(&app));
     app.run()
 }

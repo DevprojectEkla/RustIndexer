@@ -100,7 +100,7 @@ impl MainView {
     ///this creates the main window, and several buttons that allows some functionnalities
     ///set_controllers() defines connect_clicked methods called on each button and triggers the controllers that handles the main
     ///logic of the app
-    pub fn build_ui(&self, app: &Application) {
+    pub fn build_ui(&mut self, app: &Application) {
         let win = ApplicationWindow::builder()
             .application(app)
             .default_width(160)
@@ -114,6 +114,7 @@ impl MainView {
         self.headerbar.build();
         self.header_box.append(&self.headerbar.gtk_box_header);
         // self.header_box.append(&self.headerbar.gtk_box_menu);
+        self.gtk_box.append(&self.folder_label);
         self.gtk_box.append(&self.browse);
         self.gtk_box.append(&self.index);
         self.main_box.append(&self.header_box);
@@ -127,13 +128,13 @@ impl MainView {
         self.exit_button.add_css_class("destructive-action");
         self.index.add_css_class("suggested-action")
     }
-    fn set_controllers(&self, win: ApplicationWindow) {
+    fn set_controllers(&mut self, win: ApplicationWindow) {
         let search_controller = SearchController::new(&self.input_view);
 
         search_controller.handle_activate();
         search_controller.handle_click_search_button();
         self.main_controller
-            .set_label_current_index_folder(&self.folder_label, &self.browse);
+            .set_label_current_index_folder(&self.folder_label);
         self.main_controller.handle_browse_clicked(&self.browse);
         self.main_controller
             .handle_exit_clicked(&self.exit_button, &win);

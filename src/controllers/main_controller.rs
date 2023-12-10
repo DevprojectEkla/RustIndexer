@@ -15,8 +15,13 @@ use crate::{
 };
 
 pub trait Controller {
-    fn handle_activate(&self, window: Window, callback: fn());
-    fn handle_click(&self, button: &Button, callback: fn());
+    fn handle_activate(&self, button: &Button, window: &Window, callback: fn()) {
+        button.connect_activate(move |_| callback());
+    }
+
+    fn handle_click(&self, button: &Button, callback: fn()) {
+        button.connect_clicked(move |_| callback());
+    }
     fn handle_close(&self, button: &Button, window: &Window) {
         let cloned_window = window.clone();
 
@@ -29,21 +34,36 @@ pub struct MainController {
     // main_view: MainView,
     browse_view: Option<BrowseView>,
     model: StoredIndexModel,
+    data: String,
 }
 impl MainController {
     pub fn new() -> Self {
         let model = StoredIndexModel::new();
+        let data = String::new();
         // let browse_view = BrowseView::new(model);
         Self {
             browse_view: None,
             model,
+            data,
         }
     }
     fn browse_init(&mut self) {
         // if self.browse_view.is_none()
         self.browse_view = Some(BrowseView::new(&self.model));
     }
-    pub fn set_label_current_index_folder(&self, label: &Label, button: &Button) {}
+    pub fn set_label_current_index_folder(&mut self, label: &Label) {
+        if self.browse_view.is_some() {
+            label.set_text(
+                self.browse_view
+                    .as_mut()
+                    .unwrap()
+                    .label_selected_folder
+                    .text()
+                    .as_str(),
+            );
+        }
+    }
+
     pub fn handle_browse_clicked(&self, browse: &Button) -> SignalHandlerId {
         let cloned_view = self.browse_view.clone();
         // let borrowed_view = Rc::new(RefCell::new(self.browse_view.clone()));
@@ -78,7 +98,6 @@ impl MainController {
     }
 }
 impl Controller for MainController {
-    fn handle_activate(&self, window: Window, callback: fn()) {}
     fn handle_close(&self, button: &Button, window: &Window) {
         let cloned_window = window.clone();
 
