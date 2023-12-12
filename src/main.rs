@@ -1,3 +1,5 @@
+extern crate env_logger;
+extern crate log;
 extern crate search_engine;
 mod config;
 mod controllers;
@@ -7,6 +9,10 @@ mod types;
 mod views;
 mod widgets;
 
+use log::{
+    debug, info,
+    LevelFilter::{Debug, Error, Info, Warn},
+};
 use std::{cell::RefCell, rc::Rc};
 
 use config::APP_ID;
@@ -18,7 +24,23 @@ use gtk::{glib, prelude::*, Application};
 
 ///the main() function is set to the bare minimum. The App uses MVC architecture so only the MainView struct is required to build the entire
 ///aplication and start its logics with the help of different views and controllers
+fn set_log_level(level: &str) {
+    let log_level = match level {
+        "debug" => Debug,
+        "info" => Info,
+        "warn" => Warn,
+        "error" => Error,
+        _ => Error,
+    };
+
+    env_logger::Builder::from_default_env()
+        .filter_level(log_level)
+        .init();
+}
 fn main() -> glib::ExitCode {
+    set_log_level("debug");
+    info!(":: Application {} started ::", APP_ID);
+    debug!(":: DEBUG MOD ON ::");
     let _ = gtk::init();
     let app = Application::builder().application_id(APP_ID).build();
     // Set keyboard accelerator to trigger "win.close".

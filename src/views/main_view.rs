@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gtk::gio::{File, FileInfo};
 use gtk::{prelude::*, Align, Label, SearchEntry};
 use gtk::{Application, ApplicationWindow, Button, Orientation};
 
@@ -22,12 +23,16 @@ pub struct MainView {
     input_view: SearchView,
     main_controller: MainController,
     model: Option<StoredIndexModel>,
+    directory: Rc<RefCell<Option<File>>>,
     // browse_view: BrowseView,
     headerbar: CustomBar,
     main_box: gtk::Box,
     header_box: gtk::Box,
+    label_box: gtk::Box,
+    index_box: gtk::Box,
     gtk_box: gtk::Box,
     folder_label: Label,
+    legend: Label,
     browse: Button,
     index: Button,
     exit_button: Button,
@@ -37,6 +42,7 @@ impl MainView {
     pub fn new() -> Self {
         // let model = StoredIndexModel::new();
         let model = None;
+        let directory = Rc::new(RefCell::new(None));
         let main_controller = MainController::new();
         // let browse_view = BrowseView::new(&model);
 
@@ -61,7 +67,14 @@ impl MainView {
             .halign(Align::Center)
             .vexpand(true) //huge gap because of this
             .build();
-
+        let index_box = gtk::Box::builder()
+            .orientation(Orientation::Vertical)
+            .halign(Align::Center)
+            .build();
+        let label_box = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .halign(Align::Center)
+            .build();
         let gtk_box = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .margin_top(12)
@@ -71,8 +84,9 @@ impl MainView {
             .halign(Align::Center)
             .build();
         let headerbar = CustomBar::new();
-        let folder_label = Label::new(Some(""));
-        let browse = Button::builder().label("parcourir").build();
+        let legend = Label::new(Some("folder to index: "));
+        let folder_label = Label::new(Some("<select a folder>"));
+        let browse = Button::builder().label("browse").build();
         let index = Button::builder().label("index folder").build();
 
         let exit_button = Button::builder()
@@ -86,10 +100,14 @@ impl MainView {
             main_controller,
             // browse_view,
             model,
+            directory,
             input_view,
             headerbar,
             main_box,
             header_box,
+            index_box,
+            legend,
+            label_box,
             gtk_box,
             folder_label,
             browse,
@@ -114,11 +132,14 @@ impl MainView {
         self.headerbar.build();
         self.header_box.append(&self.headerbar.gtk_box_header);
         // self.header_box.append(&self.headerbar.gtk_box_menu);
-        self.gtk_box.append(&self.folder_label);
         self.gtk_box.append(&self.browse);
         self.gtk_box.append(&self.index);
+        self.label_box.append(&self.legend);
+        self.label_box.append(&self.folder_label);
+        self.index_box.append(&self.label_box);
+        self.index_box.append(&self.gtk_box);
         self.main_box.append(&self.header_box);
-        self.main_box.append(&self.gtk_box);
+        self.main_box.append(&self.index_box);
         self.main_box.append(&self.input_view.gtk_box);
         self.main_box.append(&self.exit_button);
         self.add_style();
@@ -133,9 +154,13 @@ impl MainView {
 
         search_controller.handle_activate();
         search_controller.handle_click_search_button();
+        self.main_controller.handle_browse_clicked(
+            &self.browse,
+            &self.folder_label,
+            &self.directory,
+        );
         self.main_controller
-            .set_label_current_index_folder(&self.folder_label);
-        self.main_controller.handle_browse_clicked(&self.browse);
+            .handle_index_clicked(&self.index, &self.directory);
         self.main_controller
             .handle_exit_clicked(&self.exit_button, &win);
         // win.set_decorated(true);
