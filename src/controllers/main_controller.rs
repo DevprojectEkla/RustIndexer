@@ -2,6 +2,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use gtk::gio::{File, FileInfo};
 use gtk::{glib::SignalHandlerId, prelude::*, ApplicationWindow, Button, Label, Window};
+use search_engine::index::index_all;
+use search_engine::utils::walk_dir;
 
 use crate::config::INDEX_FOLDER;
 use crate::types::{Controller, VecInfo};
@@ -34,6 +36,31 @@ impl MainController {
     /// SingleSelection of BrowserView to set the label of MainView to the activated value
     /// (double-cliked selection or "enter" on a label)
     /// since it is just a setup it is called when we setup the BrowseView with the browse button
+    pub fn set_dynamic_path(&mut self) {
+        let cloned_self = Rc::new(RefCell::new(self.clone()));
+        let self_clone_for_closure = cloned_self.clone();
+        let dynamic_path = Rc::new(RefCell::new(self.data.clone()));
+        if cloned_self.borrow_mut().browse_view.is_some() {
+            cloned_self
+                .borrow_mut()
+                .browse_view
+                .as_mut()
+                .expect("there must be a browse view to set dynamic path")
+                .browser
+                .connect_activate(move |_, _| {
+                    *dynamic_path.borrow_mut() = self_clone_for_closure
+                        .borrow_mut()
+                        .browse_view
+                        .as_mut()
+                        .unwrap()
+                        .dynamic_path
+                        .borrow_mut()
+                        .to_string();
+                    debug!("dynamic path of browse view => {:?}", dynamic_path);
+                });
+        }
+    }
+
     pub fn set_label_current_index_folder(&mut self, label: &Label) {
         let cloned_self = Rc::new(RefCell::new(self.clone()));
         let self_clone = cloned_self.clone();
@@ -67,21 +94,14 @@ impl MainController {
             debug!("No BrowseView in MainController.set_label...");
         }
     }
-    pub fn handle_index_clicked(
-        &self,
-        index: &Button,
-        dir: &Rc<RefCell<Option<File>>>,
-    ) -> SignalHandlerId {
-        debug!("directory init {:?}", dir);
-        let dir = dir.clone();
+
+    pub fn handle_index_clicked(&self, index: &Button) -> SignalHandlerId {
+        let cloned_self = Rc::new(RefCell::new(self.clone()));
+        let cloned_data = Rc::new(RefCell::new(self.data.clone()));
         index.connect_clicked(move |_| {
-            let default = debug!(
-                "handle index button clicked {:?}",
-                dir.borrow()
-                    .as_ref()
-                    .unwrap_or(File::for_path(INDEX_FOLDER).as_ref())
-                    .path()
-            );
+            let dynamic_path = cloned_data.borrow_mut();
+            let list_files = walk_dir(&dynamic_path);
+            index_all(list_files);
         })
     }
     fn set_index_directory(&self, dir: &Rc<RefCell<Option<File>>>) {
@@ -161,6 +181,8 @@ impl MainController {
             cloned_self
                 .borrow_mut()
                 .set_label_current_index_folder(&label_cloned);
+            cloned_self.borrow_mut().set_dynamic_path();
+
             cloned_self.borrow_mut().set_index_directory(&dir_cloned)
         })
     }

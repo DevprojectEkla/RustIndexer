@@ -34,7 +34,7 @@ pub struct MainView {
     folder_label: Label,
     legend: Label,
     browse: Button,
-    index: Button,
+    index_button: Button,
     exit_button: Button,
 }
 
@@ -87,7 +87,7 @@ impl MainView {
         let legend = Label::new(Some("folder to index: "));
         let folder_label = Label::new(Some("<select a folder>"));
         let browse = Button::builder().label("browse").build();
-        let index = Button::builder().label("index folder").build();
+        let index_button = Button::builder().label("index folder").build();
 
         let exit_button = Button::builder()
             .label("Exit")
@@ -111,7 +111,7 @@ impl MainView {
             gtk_box,
             folder_label,
             browse,
-            index,
+            index_button,
             exit_button,
         }
     }
@@ -133,7 +133,7 @@ impl MainView {
         self.header_box.append(&self.headerbar.gtk_box_header);
         // self.header_box.append(&self.headerbar.gtk_box_menu);
         self.gtk_box.append(&self.browse);
-        self.gtk_box.append(&self.index);
+        self.gtk_box.append(&self.index_button);
         self.label_box.append(&self.legend);
         self.label_box.append(&self.folder_label);
         self.index_box.append(&self.label_box);
@@ -147,7 +147,7 @@ impl MainView {
     }
     fn add_style(&self) {
         self.exit_button.add_css_class("destructive-action");
-        self.index.add_css_class("suggested-action")
+        self.index_button.add_css_class("suggested-action")
     }
     fn set_controllers(&mut self, win: ApplicationWindow) {
         let search_controller = SearchController::new(&self.input_view);
@@ -160,14 +160,14 @@ impl MainView {
             &self.directory,
         );
         self.main_controller
-            .handle_index_clicked(&self.index, &self.directory);
+            .handle_index_clicked(&self.index_button);
         self.main_controller
             .handle_exit_clicked(&self.exit_button, &win);
         // win.set_decorated(true);
         win.present();
     }
     pub fn connect_index_clicked<F: Fn() + 'static>(&self, callback: F) {
-        self.index.connect_clicked(move |_| callback());
+        self.index_button.connect_clicked(move |_| callback());
     }
     pub fn connect_browse_clicked<F: Fn() + 'static>(&self, callback: F) {
         self.browse.connect_clicked(move |_| callback());

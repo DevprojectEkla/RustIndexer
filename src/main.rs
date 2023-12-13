@@ -22,6 +22,8 @@ use views::main_view::MainView;
 //use gtk4 as gtk
 use gtk::{glib, prelude::*, Application};
 
+use crate::controllers::main_controller::MainController;
+
 ///the main() function is set to the bare minimum. The App uses MVC architecture so only the MainView struct is required to build the entire
 ///aplication and start its logics with the help of different views and controllers
 fn set_log_level(level: &str) {
@@ -46,6 +48,7 @@ fn main() -> glib::ExitCode {
     // Set keyboard accelerator to trigger "win.close".
     app.set_accels_for_action("win.close", &["<Ctrl>W"]);
     let main_window = Rc::new(RefCell::new(MainView::new()));
+    let main_controller = Rc::new(RefCell::new(MainController::new()));
     app.connect_activate(move |app| main_window.borrow_mut().build_ui(&app));
     app.run()
 }
