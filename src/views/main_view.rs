@@ -8,6 +8,7 @@ use gtk::{Application, ApplicationWindow, Button, Orientation};
 use crate::controllers::main_controller::MainController;
 use crate::controllers::search_controller::SearchController;
 use crate::models::index_model::StoredIndexModel;
+use crate::types::Controller;
 use crate::widgets::menu_bar::CustomBar;
 
 use super::browse_view::BrowseView;
@@ -19,11 +20,11 @@ use super::search_view::SearchView;
 //application with connect_activate and connect_activate calls the build_ui() method of this
 //struct. A window attribute would compile but cause a Gtk **critical error** trying to create a
 //window before activating the app. The connect_start_up does not seem to work either for this.
+#[derive(Clone)]
 pub struct MainView {
     input_view: SearchView,
-    main_controller: MainController,
     model: Option<StoredIndexModel>,
-    directory: Rc<RefCell<Option<File>>>,
+    pub directory: Rc<RefCell<Option<File>>>,
     // browse_view: BrowseView,
     headerbar: CustomBar,
     main_box: gtk::Box,
@@ -31,19 +32,18 @@ pub struct MainView {
     label_box: gtk::Box,
     index_box: gtk::Box,
     gtk_box: gtk::Box,
-    folder_label: Label,
+    pub folder_label: Label,
     legend: Label,
-    browse: Button,
-    index_button: Button,
-    exit_button: Button,
+    pub browse: Button,
+    pub index_button: Button,
+    pub exit_button: Button,
 }
-
+impl Controller for MainView {}
 impl MainView {
     pub fn new() -> Self {
         // let model = StoredIndexModel::new();
         let model = None;
         let directory = Rc::new(RefCell::new(None));
-        let main_controller = MainController::new();
         // let browse_view = BrowseView::new(&model);
 
         let input_view = SearchView::new();
@@ -97,7 +97,6 @@ impl MainView {
             .margin_end(12)
             .build();
         Self {
-            main_controller,
             // browse_view,
             model,
             directory,
@@ -154,16 +153,9 @@ impl MainView {
 
         search_controller.handle_activate();
         search_controller.handle_click_search_button();
-        self.main_controller.handle_browse_clicked(
-            &self.browse,
-            &self.folder_label,
-            &self.directory,
-        );
-        self.main_controller
-            .handle_index_clicked(&self.index_button);
-        self.main_controller
-            .handle_exit_clicked(&self.exit_button, &win);
-        // win.set_decorated(true);
+
+        self.handle_exit(&self.exit_button, &win);
+
         win.present();
     }
     pub fn connect_index_clicked<F: Fn() + 'static>(&self, callback: F) {

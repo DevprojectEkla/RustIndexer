@@ -1,6 +1,6 @@
 use std::{cell::RefCell, ops::Index, rc::Rc, slice::SliceIndex};
 
-use gtk::{gio::FileInfo, prelude::*, Button, Window};
+use gtk::{gio::FileInfo, prelude::*, ApplicationWindow, Button, Window};
 pub type StandardResult = Result<(), Box<dyn std::error::Error>>;
 pub struct VecInfo {
     pub vec_info: Vec<FileInfo>,
@@ -23,6 +23,11 @@ pub trait Controller {
         button.connect_clicked(move |_| callback());
     }
     fn handle_close(&self, button: &Button, window: &Window) {
+        let cloned_window = window.clone();
+
+        button.connect_clicked(move |_| cloned_window.destroy());
+    }
+    fn handle_exit(&self, button: &Button, window: &ApplicationWindow) {
         let cloned_window = window.clone();
 
         button.connect_clicked(move |_| cloned_window.destroy());

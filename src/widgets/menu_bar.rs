@@ -5,6 +5,7 @@ use gtk::{Box, Button, HeaderBar, Label, MenuButton, Orientation, Popover, Popov
 
 use crate::config::APP_NAME;
 
+#[derive(Clone)]
 pub struct CustomBar {
     pub gtk_box_header: Box,
     // pub gtk_box_menu: Box,

@@ -48,7 +48,18 @@ fn main() -> glib::ExitCode {
     // Set keyboard accelerator to trigger "win.close".
     app.set_accels_for_action("win.close", &["<Ctrl>W"]);
     let main_window = Rc::new(RefCell::new(MainView::new()));
-    let main_controller = Rc::new(RefCell::new(MainController::new()));
-    app.connect_activate(move |app| main_window.borrow_mut().build_ui(&app));
+    let main_controller = MainController::new(&main_window.borrow_mut());
+
+    app.connect_activate(move |app| {
+        let mut borrowed_main_view = main_window.borrow_mut();
+        main_controller.handle_browse_clicked(
+            &borrowed_main_view.browse,
+            &borrowed_main_view.folder_label,
+            &borrowed_main_view.directory,
+        );
+
+        borrowed_main_view.build_ui(&app)
+    });
+
     app.run()
 }

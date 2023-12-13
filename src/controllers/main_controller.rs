@@ -7,21 +7,25 @@ use search_engine::utils::walk_dir;
 
 use crate::config::INDEX_FOLDER;
 use crate::types::{Controller, VecInfo};
+use crate::views::main_view::{self, MainView};
 use crate::{models::index_model::StoredIndexModel, views::browse_view::BrowseView};
 use log::{debug, info};
 
 #[derive(Clone)]
 pub struct MainController {
+    main_view: MainView,
     browse_view: Option<BrowseView>,
     model: StoredIndexModel,
     data: String,
 }
 impl MainController {
-    pub fn new() -> Self {
+    pub fn new(main_view: &MainView) -> Self {
         let model = StoredIndexModel::new();
         let data = String::new();
         let browse_view = None;
+        let main_view = main_view.clone();
         Self {
+            main_view,
             browse_view,
             model,
             data,
@@ -41,6 +45,7 @@ impl MainController {
         let self_clone_for_closure = cloned_self.clone();
         let dynamic_path = Rc::new(RefCell::new(self.data.clone()));
         if cloned_self.borrow_mut().browse_view.is_some() {
+            let cloned_self_for_closure = cloned_self.clone();
             cloned_self
                 .borrow_mut()
                 .browse_view
@@ -57,6 +62,9 @@ impl MainController {
                         .borrow_mut()
                         .to_string();
                     debug!("dynamic path of browse view => {:?}", dynamic_path);
+                    cloned_self_for_closure
+                        .borrow_mut()
+                        .handle_index_clicked(dynamic_path.clone());
                 });
         }
     }
@@ -95,12 +103,11 @@ impl MainController {
         }
     }
 
-    pub fn handle_index_clicked(&self, index: &Button) -> SignalHandlerId {
+    pub fn handle_index_clicked(&self, dynamic_path: Rc<RefCell<String>>) -> SignalHandlerId {
         let cloned_self = Rc::new(RefCell::new(self.clone()));
         let cloned_data = Rc::new(RefCell::new(self.data.clone()));
-        index.connect_clicked(move |_| {
-            let dynamic_path = cloned_data.borrow_mut();
-            let list_files = walk_dir(&dynamic_path);
+        self.main_view.index_button.connect_clicked(move |_| {
+            let list_files = walk_dir(dynamic_path.borrow_mut().as_str());
             index_all(list_files);
         })
     }
@@ -108,7 +115,6 @@ impl MainController {
         let cloned_self = Rc::new(RefCell::new(self.clone()));
         let self_clone_for_closure = cloned_self.clone();
         let cloned_dir = dir.clone();
-        let cloned_dir_second = cloned_dir.clone();
         if cloned_self.borrow_mut().browse_view.is_some() {
             debug!("connecting SingleSelection to set the index directory");
 
