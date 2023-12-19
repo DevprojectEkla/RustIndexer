@@ -43,6 +43,9 @@ pub trait WrapInRcRefCell: Clone {
     fn wrap_and_clone(&self) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(self.clone()))
     }
+    fn tuple_clones_wrap_and_self(&self) -> (Rc<RefCell<Self>>, Self) {
+        (self.wrap_and_clone(), self.clone())
+    }
 }
 
 impl<T: Clone> WrapInRcRefCell for T {}

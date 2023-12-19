@@ -5,6 +5,7 @@ use gtk::gio::{File, FileInfo};
 use gtk::{prelude::*, Align, Label, SearchEntry};
 use gtk::{Application, ApplicationWindow, Button, Orientation};
 
+use crate::config::{APP_WINDOW_HEIGHT, APP_WINDOW_WIDTH};
 use crate::controllers::main_controller::MainController;
 use crate::controllers::search_controller::SearchController;
 use crate::models::index_model::StoredIndexModel;
@@ -119,13 +120,13 @@ impl MainView {
     ///logic of the app
     pub fn build_ui(&mut self, app: &Application) {
         let win = ApplicationWindow::builder()
+            // .resizable(false) //this can prevent i3wm to resize the window
             .application(app)
-            .default_width(160)
-            .default_height(200)
-            // .width_request(360)
             .child(&self.main_box)
             .title("TermiRust")
             .show_menubar(true)
+            // .default_width(APP_WINDOW_WIDTH)
+            // .default_height(APP_WINDOW_HEIGHT)
             .build();
         self.input_view.build_ui(&win);
         self.headerbar.build();
