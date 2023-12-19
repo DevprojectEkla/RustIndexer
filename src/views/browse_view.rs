@@ -55,7 +55,8 @@ pub struct BrowseView {
     pub label_selected_folder: Label,
     pub scroll_window: ScrolledWindow,
     pub gtk_box: gtk::Box,
-    pub browser: ListView,
+    pub gtk_list_view: ListView,
+    pub browse_back_button: Button,
     pub close_button: Button,
     pub search_bar: SearchBar,
     pub search_entry: SearchEntry,
@@ -65,13 +66,20 @@ pub struct BrowseView {
     pub hash_info_index: Rc<RefCell<HashMap<usize, FileInfo>>>,
 }
 impl BrowseView {
+    ///this instantiate the BrowseView.
+    ///Besides components of the view like
+    ///window and buttons, it also initiate crucial variables to set
+    ///up or DirectoryList and to pass data to the MainController, especially
+    ///the dynamic_path variable which allows a browsing of the tree direcctory
+    ///and retains the path to the directory we want to index with the
+    ///index_button of the MainView
     pub fn new(model: &StoredIndexModel) -> Self {
         let window = Window::new();
         let label_selected_folder = Label::new(Some("select a folder"));
         let hash_info_index = Rc::new(RefCell::new(HashMap::new()));
         let scroll_window = ScrolledWindow::builder().min_content_height(400).build();
-        // let browser = ListView::new(Some(multi_selection), Some(factory));
-        let browser = ListView::builder()
+        // let gtk_list_view = ListView::new(Some(multi_selection), Some(factory));
+        let gtk_list_view = ListView::builder()
             .vexpand_set(true)
             .halign(Align::Start)
             .show_separators(true)
@@ -87,6 +95,7 @@ impl BrowseView {
             .halign(Align::Center)
             .build();
         let close_button = Button::new();
+        let browse_back_button = Button::new();
         let search_bar = SearchBar::new();
         let search_entry = SearchEntry::new();
         let output_screen = ScreenOutput::new();
@@ -113,8 +122,9 @@ impl BrowseView {
             window,
             label_selected_folder,
             scroll_window,
-            browser,
+            gtk_list_view,
             gtk_box,
+            browse_back_button,
             close_button,
             search_bar,
             search_entry,
@@ -127,12 +137,15 @@ impl BrowseView {
 
     pub fn build_ui(&self) {
         self.close_button.set_label("Close");
+        self.browse_back_button.set_label("..");
+        self.browse_back_button.set_visible(false);
         self.search_bar.connect_entry(&self.search_entry);
         self.search_bar.set_key_capture_widget(Some(&self.window));
         self.gtk_box.append(&self.search_entry);
         self.gtk_box.append(&self.search_bar);
         self.gtk_box.append(&self.label_selected_folder);
         self.gtk_box.append(&self.scroll_window);
+        self.gtk_box.append(&self.browse_back_button);
         self.gtk_box.append(&self.close_button);
         self.window.set_child(Some(&self.gtk_box));
         self.window.present();
@@ -140,7 +153,7 @@ impl BrowseView {
         // self.close_button.connect_clicked(move |_| clone.destroy());
 
         self.handle_close(&self.close_button, &self.window);
-        self.handle_browser_activate();
+        self.handle_gtk_list_view_activate();
 
         self.setup_browser(&self.single_selection, &self.directories, &self.default_dir);
 
@@ -156,9 +169,7 @@ impl BrowseView {
                 "standard::name",
                 FileQueryInfoFlags::all(),
                 Cancellable::NONE,
-            )?; //this is a Result<FileIterator,Err>
-            let cloned_info = info.clone();
-            // let mut hash_info_index: HashMap<usize, FileInfo> = HashMap::new();
+            )?; //this is a Result<FileNumerator,Err>
             let mut borrowed_hash = self.hash_info_index.borrow_mut();
             let mut i = 0;
             for comp in info.into_iter() {
@@ -182,38 +193,34 @@ impl BrowseView {
         let factory = SignalListItemFactory::new();
         let j = Cell::new(0);
         factory.connect_setup(move |_, list_item| {
+            // the first var in closure is the factory
+            // itself
+            // the whole closure act as a for loop that iterates on each item
+            // of the directory list we created via a GFile which is the directory
+            // we want to list.
+            // we need to grab the GFileInfos of each file of the directory
+            // by invoking a special method on the
+            // GFile associated with our directory
+            // Gtk names it a default_dir, this is the attribute of the DirectoryList
+
+            // cf.Documentation Gtk4: https://docs.gtk.org/gtk4/class.DirectoryList.html
+            //"The GFileInfos returned from a GtkDirectoryList have the “standard::file” attribute set to the GFile they refer to. This way you can get at the file that is referred to in the same way you would via g_file_enumerator_get_child(). This means you do not need access to the GtkDirectoryList, but can access the GFile directly from the GFileInfo when operating with a GtkListView or similar."
+            //for the argument to pass to the enumerate_children method see:https://docs.gtk.org/gio/method.File.enumerate_children.html
             let info = file_for_closure.enumerate_children(
                 "standard::name",
                 FileQueryInfoFlags::all(),
                 Cancellable::NONE,
             ); //this is a Result<FileIterator,Err>
             let cloned_info = info.clone();
-            // let mut hash_info_index: HashMap<usize, FileInfo> = HashMap::new();
-            // if j.get() == 0 {
-            //     for i in 0..200 {
-            //         if let Ok(file_info) = info.clone().and_then(|mut iter| iter.next().unwrap()) {
-            //             hash_info_index.insert(i, file_info);
-            //             debug!("index: {:?} file: {:?}", i, hash_info_index[&i].name());
-            //         }
-            //     }
-            // }
-            // debug!("{:?}", hash_info_index);
             cloned_self
                 .borrow_mut()
                 .from_iterator(cloned_info.unwrap().map(|file| file.unwrap()).into_iter());
-            // Weird stuff below: we need to consume the Iterator with collect() to have the map closure doing its
-            // job. Why .map() to do that? we could iterate over the info iterator via a for loop, but we already are in
-            // a for loop with connect_bind(), then starting a new one on info will create x for loops where x is the
-            // number of item in the ListItem
-            // just check it out with a simple print here, you'll get x print:
-            // ex:
-            // if j.get() == 0 {
-            //     debug!("first iteration")
-            // } else {
-            //     debug!("iteration {}:", j.get())
-            // }
             //the following populates our name_list
             cloned_self.borrow_mut().info_list.borrow_mut().reverse();
+            //the name_list should be mutable if we want to sort it but we
+            //still have to figure out a logic to keep track of what label name
+            //points to what file. If we sort the list direcly here the labels
+            //shows name of files but the underlying item points to another file
             let mut name_list: Vec<String> = cloned_self
                 .borrow_mut()
                 .info_list
@@ -230,13 +237,14 @@ impl BrowseView {
                 })
                 .collect();
 
-            // name_list.sort(); // Now we need to grab the item of the list
+            // name_list.sort();
+            // Now we need to grab the item of the list to set label's texts
+            // with a file name
             let list: ListItem = list_item
                 .to_value()
                 .get()
                 .expect(".get() should work on a non empty ListItem only");
-            // and then the widget child of this item, it should be the one defined
-            // by our factory in connect_setup call
+            // and then we create the widgets child of this item to be a label,
             let n = name_list.len();
             if j.get() < n {
                 let item = Label::builder()
@@ -254,11 +262,11 @@ impl BrowseView {
         self.handle_connect_bind(&factory, &file);
         self.handle_selection(&cloned_selection);
 
-        self.browser.set_model(Some(selection));
-        self.browser.set_factory(Some(&factory));
-        self.scroll_window.set_child(Some(&self.browser));
+        self.gtk_list_view.set_model(Some(selection));
+        self.gtk_list_view.set_factory(Some(&factory));
+        self.scroll_window.set_child(Some(&self.gtk_list_view));
 
-        self.browser.set_margin_bottom(2);
+        self.gtk_list_view.set_margin_bottom(2);
     }
     fn selection_callback(&self) {
         if self.info_list.borrow().len() > 0 {
@@ -269,14 +277,23 @@ impl BrowseView {
     fn add_style(&self) {
         self.close_button.add_css_class("destructive-action");
     }
-    fn handle_browser_activate(&self) -> SignalHandlerId {
+    fn handle_activate_back_button(&self) -> SignalHandlerId {
+        self.browse_back_button
+            .connect_clicked(|_| debug!("back button clicked"))
+    }
+    //the handle_gtk_list_view_activate() implement some logic but
+    //this is part of the logic of the very nature of the view
+    //so we don't separate this logic from the view
+    /// This method sets the dynamic path attribute on double-click/enter actions
+    /// over an item of the gtk ListView widget
+    fn handle_gtk_list_view_activate(&self) -> SignalHandlerId {
         self.selection_index
             .replace(self.single_selection.selected());
         let cloned_single_selection = self.single_selection.clone();
         let static_path = self.dynamic_path.clone();
         let self_cloned = self.clone();
         let file_clone = Rc::new(RefCell::new(self.default_dir.clone()));
-        self.browser.connect_activate(move |list, pos| {
+        self.gtk_list_view.connect_activate(move |list, pos| {
             debug!(
                 "on activate => list {:?} pos: {:?}, selection_index:{:?}",
                 list,
@@ -287,8 +304,10 @@ impl BrowseView {
                 .model()
                 .expect("there is a model for the ListView")
                 .item(pos)
-            //cloned_single_selection.selected()
             {
+                self_cloned.browse_back_button.set_visible(true);
+                self_cloned.handle_activate_back_button();
+                debug!("==== BACK BUTTON VISIBLE ====");
                 debug!(
                     "item selected : {:?}",
                     selected_item.to_value().get::<FileInfo>().unwrap().name()
@@ -373,15 +392,12 @@ impl BrowseView {
         );
     }
     fn handle_selection(&self, selection: &SingleSelection) {
-        let index: usize = selection.selected() as usize; // the selected method returns a u32
-        self.selection_index.replace(selection.selected()); // which somehow cannot be use for
-
+        self.selection_index.replace(selection.selected());
         let cloned_select = selection.clone();
 
         let self_cloned = self.clone();
-        let label_selected = self.label_selected_folder.clone();
         selection.connect_selection_changed(move |selection, _, _| {
-            let index: usize = selection.selected() as usize; // the selected method returns a u32
+            let index: usize = selection.selected() as usize; // the selected() method returns a u32
             self_cloned.set_label(&cloned_select, &index); // this is to set the main label
             self_cloned.selection_callback();
         });
@@ -390,13 +406,6 @@ impl BrowseView {
         let file = file.clone();
         let cloned_self = Rc::new(RefCell::new(self.clone()));
         factory.connect_bind(move |_, list_item| {});
-        // the first var in closure is the factory
-        // itself
-        // the whole closure act as a for loop that iterates on each item
-        // of the list
-        // we need to grab the GFileInfo available directly by calling a special method on the
-        // directory "default_dir" define for the ListDirectory
-        // Gtk names it a default_dir, this is the attribute of the DirectoryList
     }
     pub fn present(&self) {
         self.window.clone().present();

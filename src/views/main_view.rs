@@ -142,22 +142,26 @@ impl MainView {
         self.main_box.append(&self.input_view.gtk_box);
         self.main_box.append(&self.exit_button);
         self.add_style();
-        self.set_controllers(win);
+        // self.set_controllers();
+        self.handle_exit(&self.exit_button, &win);
+
+        win.present();
+
+        {
+            let x = "string";
+            let _y: String = String::from(x) + &String::from("test");
+        }
     }
     fn add_style(&self) {
         self.exit_button.add_css_class("destructive-action");
         self.index_button.add_css_class("suggested-action")
     }
-    fn set_controllers(&mut self, win: ApplicationWindow) {
-        let search_controller = SearchController::new(&self.input_view);
+    // fn set_controllers(&mut self) {
+    //     let search_controller = SearchController::new(&self.input_view);
 
-        search_controller.handle_activate();
-        search_controller.handle_click_search_button();
-
-        self.handle_exit(&self.exit_button, &win);
-
-        win.present();
-    }
+    //     search_controller.handle_activate();
+    //     search_controller.handle_click_search_button();
+    // }
     pub fn connect_index_clicked<F: Fn() + 'static>(&self, callback: F) {
         self.index_button.connect_clicked(move |_| callback());
     }

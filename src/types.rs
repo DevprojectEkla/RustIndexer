@@ -1,6 +1,8 @@
 use std::{cell::RefCell, ops::Index, rc::Rc, slice::SliceIndex};
 
 use gtk::{gio::FileInfo, prelude::*, ApplicationWindow, Button, Window};
+
+use crate::views::{browse_view::BrowseView, main_view::MainView, search_view::SearchView};
 pub type StandardResult = Result<(), Box<dyn std::error::Error>>;
 pub struct VecInfo {
     pub vec_info: Vec<FileInfo>,
@@ -34,13 +36,19 @@ pub trait Controller {
     }
 }
 pub trait WrapInRcRefCell: Clone {
-    fn wrap_in_rc_refcell(self) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(self))
+    fn wrap_in_rc_refcell(&self) -> Rc<RefCell<&Self>> {
+        Rc::new(RefCell::new(&self))
     }
 
-    fn wrap_and_clone(self) -> Rc<RefCell<Self>> {
+    fn wrap_and_clone(&self) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(self.clone()))
     }
 }
 
 impl<T: Clone> WrapInRcRefCell for T {}
+
+pub enum View {
+    BrowseView(BrowseView),
+    MainView(MainView),
+    SearchView(SearchView),
+}
