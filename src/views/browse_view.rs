@@ -41,7 +41,7 @@ impl Controller for BrowseView {
         self.clear_dynamic_path();
         let cloned_window = window.clone();
 
-        button.connect_clicked(move |_| cloned_window.destroy());
+        button.connect_clicked(move |_| cloned_window.hide());
     }
 }
 
@@ -154,7 +154,6 @@ impl BrowseView {
         self.window.present();
         // let clone = self.window.clone();
         // self.close_button.connect_clicked(move |_| clone.destroy());
-
         self.handle_close(&self.close_button, &self.window);
         self.handle_gtk_list_view_activate();
         self.handle_back_button_clicked();
@@ -190,7 +189,7 @@ impl BrowseView {
                         debug!("index: {:?} file: {:?}", i, borrowed_hash[&i].name());
                         i += 1;
                     }
-                    debug!("my hash_info_index : {:?}", borrowed_hash);
+                    // debug!("my hash_info_index : {:?}", borrowed_hash);
                     Ok(borrowed_hash.clone())
                 } else {
                     Err(Error::new(FileError::Isdir, "this is not a directory"))
@@ -308,10 +307,7 @@ impl BrowseView {
     fn add_style(&self) {
         self.close_button.add_css_class("destructive-action");
     }
-    fn handle_activate_back_button(&self) -> SignalHandlerId {
-        self.browse_back_button
-            .connect_clicked(|_| debug!("back button clicked"))
-    }
+
     fn set_new_path(&self, old_path: String, new_item: String) -> String {
         format!("{}/{}", old_path, new_item)
     }
@@ -346,23 +342,34 @@ impl BrowseView {
         self.default_dir = File::for_path(dynamic_path.clone());
         self.dynamic_path.replace(dynamic_path.clone());
     }
+    fn set_default_path(&self) {
+        self.dynamic_path
+            .replace(self.static_path.as_path().to_string_lossy().to_string());
+    }
     fn handle_back_button_clicked(&self) -> SignalHandlerId {
-        let wrap_and_clone = self.wrap_and_clone();
+        let (wrap_and_clone, cloned_self) = self.tuple_clones_wrap_and_self();
         self.browse_back_button.connect_clicked(move |_| {
             let mut borrowed_ref = wrap_and_clone.borrow_mut();
             let previous_path = borrowed_ref.truncate_path();
-            borrowed_ref.set_attribute_to_new_dynamic_path(previous_path);
+
+            borrowed_ref.set_attribute_to_new_dynamic_path(previous_path.clone());
             let file = borrowed_ref.default_dir.clone();
             let dir_list = borrowed_ref.directories.clone();
             let selection = borrowed_ref.single_selection.clone();
             borrowed_ref
                 .set_view_to_selected_dir(&file, &dir_list, &selection)
                 .unwrap_or_else(|err| {
+                    cloned_self.set_default_path();
+
                     debug!(
                         "the listview could not be set with the new directory list {}",
                         err
                     )
                 });
+            borrowed_ref
+                .label_selected_folder
+                .set_text(&previous_path.as_str());
+            // borrowed_ref.dynamic_path.replace(previous_path);
         })
     }
     //the handle_gtk_list_view_activate() implement some logic but
@@ -374,7 +381,6 @@ impl BrowseView {
         let wrapped_clone_self = self.wrap_and_clone();
         self.selection_index
             .replace(self.single_selection.selected());
-        let cloned_single_selection = self.single_selection.clone();
         let self_cloned = self.clone();
 
         self.gtk_list_view.connect_activate(move |list, pos| {
@@ -390,7 +396,6 @@ impl BrowseView {
                 .item(pos)
             {
                 self_cloned.browse_back_button.set_visible(true);
-                self_cloned.handle_activate_back_button();
                 debug!("==== BACK BUTTON VISIBLE ====");
                 debug!(
                     "item selected : {:?}",
@@ -398,29 +403,21 @@ impl BrowseView {
                 );
 
                 let old_path = self_cloned.dynamic_path.borrow_mut().to_string();
-                let new_item = selected_item
-                    .to_value()
-                    .get::<FileInfo>()
-                    .unwrap()
-                    .name()
-                    .as_path()
-                    .to_string_lossy()
-                    .to_string();
-                let dynamic_path = self_cloned.generate_dynamic_path(old_path, new_item);
-                wrapped_clone_self
-                    .borrow_mut()
-                    .set_attribute_to_new_dynamic_path(dynamic_path.to_string_lossy().to_string());
+                match selected_item.to_value().get::<FileInfo>() {
+                    Ok(g_file_info) => {
+                        let new_item = g_file_info.name().as_path().to_string_lossy().to_string();
+                        let dynamic_path =
+                            self_cloned.generate_dynamic_path(old_path, new_item.clone());
+                        wrapped_clone_self
+                            .borrow_mut()
+                            .set_attribute_to_new_dynamic_path(
+                                dynamic_path.to_string_lossy().to_string(),
+                            );
 
-                debug!(
-                    "file_selected : {:?}",
-                    selected_item
-                        .to_value()
-                        .get::<FileInfo>()
-                        .unwrap()
-                        .name()
-                        .as_path()
-                        .to_string_lossy()
-                );
+                        debug!("file_selected : {:?}", new_item);
+                    }
+                    Err(err) => debug!("Error in get_file_info {}", err),
+                }
 
                 let file = wrapped_clone_self.borrow_mut().default_dir.clone();
                 debug!("file : {:?}", file.path());
@@ -433,9 +430,11 @@ impl BrowseView {
                         &self_cloned.single_selection.clone(),
                     )
                     .unwrap_or_else(|err| debug!("ERROR: the view could not be set:{}", err));
-
-                let index: usize = pos as usize;
-                self_cloned.set_label(&cloned_single_selection, &index);
+                if let Some(path) = file.path() {
+                    self_cloned.set_label_on_activated_item(
+                        path.as_path().to_string_lossy().to_string().as_str(),
+                    );
+                }
             }
         })
     }
@@ -455,9 +454,8 @@ impl BrowseView {
         Ok(())
     }
 
-    fn set_label(&self, selection: &SingleSelection, index: &usize) {
+    fn set_label_on_selected_item(&self, index: &usize) {
         // indexing our [FileInfo] list
-        debug!("selection:{:?},index:{:?}", selection, index);
         // let index: usize = index as usize;
         self.label_selected_folder.set_text(
             self.info_list.borrow()[*index]
@@ -466,14 +464,16 @@ impl BrowseView {
                 .expect("should be a file name for each file"),
         );
     }
+    fn set_label_on_activated_item(&self, path: &str) {
+        self.label_selected_folder.set_text(path)
+    }
     fn handle_selection(&self, selection: &SingleSelection) {
         self.selection_index.replace(selection.selected());
-        let cloned_select = selection.clone();
 
         let self_cloned = self.clone();
         selection.connect_selection_changed(move |selection, _, _| {
             let index: usize = selection.selected() as usize; // the selected() method returns a u32
-            self_cloned.set_label(&cloned_select, &index); // this is to set the main label
+            self_cloned.set_label_on_selected_item(&index); // this is to set the main label
             self_cloned.selection_callback();
         });
     }
@@ -482,12 +482,7 @@ impl BrowseView {
         let wrap_clone_self = self.wrap_and_clone();
         factory.connect_bind(move |_, list_item| {});
     }
-    pub fn present(&self) {
-        self.window.clone().present();
-    }
-    pub fn destroy(&self) {
-        self.window.destroy();
-    }
+
     pub fn update_screen(&self, data: &str) {
         self.output_screen.update_buffer(data)
     }

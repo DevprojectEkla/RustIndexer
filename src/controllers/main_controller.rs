@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::{cell::RefCell, rc::Rc};
 
 use gtk::gio::{File, FileInfo};
@@ -16,7 +17,7 @@ pub struct MainController {
     main_view: MainView,
     browse_view: Option<BrowseView>,
     model: StoredIndexModel,
-    list_handler_id: Vec<Rc<RefCell<Option<SignalHandlerId>>>>,
+    list_handler_id: Rc<RefCell<VecDeque<Rc<RefCell<Option<SignalHandlerId>>>>>>,
     data: String,
 }
 impl Clone for MainController {
@@ -36,7 +37,7 @@ impl MainController {
         let data = String::new();
         let browse_view = None;
         let main_view = main_view.clone();
-        let list_handler_id = Vec::new();
+        let list_handler_id = Rc::new(RefCell::new(VecDeque::new()));
         Self {
             main_view,
             browse_view,
@@ -85,12 +86,14 @@ impl MainController {
 
             unwrap_browse_view.build_ui();
             unwrap_browse_view.window.present();
-            borrowed_self.set_label_current_index_folder(&label_cloned);
+            borrowed_self.set_label_current_index_folder_on_double_click(&label_cloned);
             // self_cloned
             //     .handler_id
             //     .replace();
             borrowed_self.handler_id_init();
-            borrowed_self.disconnect_handler_on_change_directory();
+            borrowed_self.handle_double_click_on_list_view_element();
+            borrowed_self.handle_browse_view_back_button_clicked();
+            // borrowed_self.handle_browse_and_disconnect_signals_browse_view();
 
             borrowed_self.set_index_directory_on_selection(&dir_cloned)
         })
@@ -99,94 +102,111 @@ impl MainController {
     /// SingleSelection of BrowserView to set the label of MainView to the activated value
     /// (double-cliked selection or "enter" on a label)
     /// since it is just a setup it is called when we setup the BrowseView with the browse button
-    pub fn set_dynamic_path(&mut self) -> Option<SignalHandlerId> {
-        let (rc_refcell_wrap_clone_self, self_cloned) = self.tuple_clones_before_closure();
-        let self_clone_for_closure = rc_refcell_wrap_clone_self.clone();
-        let dynamic_path = Rc::new(RefCell::new(self.data.clone()));
-        if let Some(browse_view) = rc_refcell_wrap_clone_self
-            .clone()
-            .borrow_mut()
-            .browse_view
-            .as_mut()
-        {
-            let rc_refcell_wrap_clone_self_for_closure = rc_refcell_wrap_clone_self.clone();
-            let cloned_browse_view_for_closure = browse_view.clone();
-            Some(browse_view.gtk_list_view.connect_activate(move |_, _| {
-                *dynamic_path.borrow_mut() = self_cloned
-                    .unwrap_browse_view_attribute(self_clone_for_closure.borrow_mut().clone())
-                    .dynamic_path
-                    .borrow_mut()
-                    .to_string();
-                debug!("dynamic path of browse view => {:?}", dynamic_path);
-                // rc_refcell_wrap_clone_self_for_closure
-                //     .borrow_mut()
-                //     .handle_index_clicked(dynamic_path.clone());
-            }))
 
-            // println!("{:?}", browse_view.label_selected_folder.text());
-        } else {
-            None
+    fn create_list_signal_handler_id_for_index_button(&self, signal_handler_id: SignalHandlerId) {
+        let mut borrowed_list = self.list_handler_id.borrow_mut();
+        borrowed_list.push_back(Rc::new(RefCell::new(Some(signal_handler_id))));
+        debug!("::after push:: list_handler_id => {:?}", borrowed_list);
+    }
+    fn manage_signal_handlers_of_index_button(&mut self) {
+        let borrowed_list = self.list_handler_id.borrow_mut();
+        let number_of_handler = borrowed_list.len();
+        if number_of_handler > 0 {
+            debug!("ok the list of handler ID augmente {:?}", borrowed_list);
+            self.disconnect_signals(
+                &self.main_view.index_button,
+                borrowed_list.clone(),
+                number_of_handler,
+            );
         }
     }
-    fn disconnect_handler_on_change_directory(&mut self) -> SignalHandlerId {
-        // let signal_handler_id = self.set_dynamic_path();
-        // self.list_handler_id
-        //     .push(Rc::new(RefCell::new(signal_handler_id)));
-        // debug!("signal list before closure {:?}", self.list_handler_id);
-        let (rc_refcell_wrap_clone_self, cloned_self) = self.tuple_clones_before_closure();
 
-        // let cloned_id = self.handler_id.clone();
+    fn clear_list_of_signal_handler_id(&self) {
+        debug!("::clearing list::");
+        let mut list = self.list_handler_id.borrow_mut();
+        if list.len() > 0 {
+            for _ in 0..list.len() {
+                let popped = list.pop_front();
+                debug!(":: popped element {:?} ::", popped);
+            }
+        }
+    }
+    fn disconnect_signals(
+        &self,
+        button: &Button,
+        list_handler_id: VecDeque<Rc<RefCell<Option<SignalHandlerId>>>>,
+        number_to_disconnect: usize,
+    ) {
+        let number_of_handler = list_handler_id.len();
+        debug!("number of handler {}", number_of_handler);
+
+        for i in 0..number_to_disconnect {
+            if let Some(signal_handler_id) = list_handler_id[i].borrow_mut().take() {
+                debug!("disconnecting signal handler:{:?}", signal_handler_id);
+                button.disconnect(signal_handler_id);
+                debug!(
+                    "associated dynamic path: {:?}",
+                    self.unwrap_browse_view_attribute(self.clone()).dynamic_path
+                );
+            }
+            // list_handler_id.pop_front();
+        }
+    }
+
+    fn set_dynamic_path(&self, dynamic_path: Rc<RefCell<String>>) {
+        let browse_view = self.unwrap_browse_view_attribute(self.clone());
+        *dynamic_path.borrow_mut() = browse_view.dynamic_path.borrow_mut().to_string();
+        debug!("dynamic path of browse view => {:?}", dynamic_path);
+    }
+    fn handle_browse_view_back_button_clicked(&self) -> () {
+        let cloned_self = self.clone();
+        if let Some(browse_view) = self.browse_view.clone() {
+            let clone_for_closure_browse_view = browse_view.clone();
+            browse_view.browse_back_button.connect_clicked(move |_| {
+                cloned_self.set_text_from_label(
+                    clone_for_closure_browse_view.label_selected_folder.clone(),
+                    cloned_self.main_view.folder_label.clone(),
+                )
+            });
+        }
+    }
+    fn handle_double_click_on_list_view_element(&mut self) -> () {
+        let (rc_refcell_wrap_clone_self, cloned_self) = self.tuple_clones_before_closure();
+        let dynamic_path = Rc::new(RefCell::new(self.data.clone()));
         self.unwrap_browse_view_attribute(cloned_self.clone())
             .gtk_list_view
             .connect_activate(move |_, _| {
+                debug!("::inside closure::");
                 let mut borrowed_wrap = rc_refcell_wrap_clone_self.borrow_mut();
                 debug!(
-                    "===================== double click => new handler connect activate:==============\nlist of handler {:?}\n",
+                    "===================== double click => 
+                    new handler connect activate:==============
+                    \n::beginning of closure:\n 
+                    => list of handler {:?}\n",
                     borrowed_wrap.list_handler_id
                 );
+                borrowed_wrap.set_dynamic_path(dynamic_path.clone());
 
-                if let Some(signal_handler_id) = borrowed_wrap.set_dynamic_path() {
-                    borrowed_wrap
-                        .list_handler_id
-                        .push(Rc::new(RefCell::new(Some(signal_handler_id))))
-                }
-                let number_of_handler = cloned_self.list_handler_id.len();
-                if number_of_handler > 0 {
-                    debug!(
-                        "ok the list of handler ID augment{:?}",
-                        cloned_self.list_handler_id
-                    );
-                    for i in 0..number_of_handler - 1 {
-                        if let Some(signal_handler_id) =
-                            borrowed_wrap.list_handler_id[i].borrow_mut().take()
-                        {
-                            debug!("disconnecting signal handler:{:?}", signal_handler_id);
-                            borrowed_wrap
-                                .unwrap_browse_view_attribute(cloned_self.clone())
-                                .gtk_list_view
-                                .disconnect(signal_handler_id);
-                            debug!(
-                                "associated dynamic path: {:?}",
-                                borrowed_wrap
-                                    .unwrap_browse_view_attribute(borrowed_wrap.clone())
-                                    .dynamic_path
-                            );
-                        }
-                    }
-                }
+                let path = borrowed_wrap
+                    .unwrap_browse_view_attribute(cloned_self.clone())
+                    .dynamic_path
+                    .clone();
+                debug!(
+                    "\n::Outside closure:: => list of handler {:?}; path:{:?}\n",
+                    borrowed_wrap.list_handler_id, path
+                );
+
+                borrowed_wrap.manage_signal_handlers_of_index_button();
+                borrowed_wrap.clear_list_of_signal_handler_id();
+                let signal_handler_id = borrowed_wrap.handle_index_clicked(path);
+                borrowed_wrap.create_list_signal_handler_id_for_index_button(signal_handler_id);
             });
-        let path = self
-            .unwrap_browse_view_attribute(self.clone())
-            .dynamic_path
-            .clone();
-
-        self.handle_index_clicked(path)
     }
     fn set_text_from_label(&self, label_source: Label, label_target: Label) {
         label_target.set_text(format!("{}/", label_source.text().to_string()).as_str())
     }
 
-    pub fn set_label_current_index_folder(&mut self, label: &Label) {
+    pub fn set_label_current_index_folder_on_double_click(&mut self, label: &Label) {
         let (rc_refcell_wrap_clone_self, self_cloned) = self.tuple_clones_before_closure();
         let cloned_wrapped_self = rc_refcell_wrap_clone_self.clone();
         let label_clone_for_closure = label.clone();
@@ -211,7 +231,12 @@ impl MainController {
 
     pub fn handle_index_clicked(&self, dynamic_path: Rc<RefCell<String>>) -> SignalHandlerId {
         self.main_view.index_button.connect_clicked(move |_| {
-            let list_files = walk_dir(dynamic_path.borrow_mut().as_str());
+            let borrowed_path = dynamic_path.borrow_mut();
+            debug!(
+                "connect_click for indexing with path => {:?}",
+                borrowed_path
+            );
+            let list_files = walk_dir(&borrowed_path.as_str());
             index_all(list_files);
         })
     }
