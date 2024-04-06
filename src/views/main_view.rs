@@ -23,7 +23,7 @@ use super::search_view::SearchView;
 //window before activating the app. The connect_start_up does not seem to work either for this.
 #[derive(Clone)]
 pub struct MainView {
-    input_view: SearchView,
+    pub input_view: SearchView,
     model: Option<StoredIndexModel>,
     pub directory: Rc<RefCell<Option<File>>>,
     // browse_view: BrowseView,
@@ -40,6 +40,7 @@ pub struct MainView {
     pub exit_button: Button,
 }
 impl Controller for MainView {}
+
 impl MainView {
     pub fn new() -> Self {
         // let model = StoredIndexModel::new();

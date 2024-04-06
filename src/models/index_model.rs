@@ -8,11 +8,11 @@ use std::{collections::HashMap, path::PathBuf};
 pub struct IndexModel<'a> {
     id: String,
     file_path: String,
-    data: &'a PseudoHash,
+    data: &'a TermFreq,
 }
 
 impl<'a> IndexModel<'a> {
-    pub fn new(id: String, file_path: String, data: &'a PseudoHash) -> Self {
+    pub fn new(id: String, file_path: String, data: &'a TermFreq) -> Self {
         Self {
             id,
             file_path,

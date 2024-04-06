@@ -10,6 +10,7 @@ mod views;
 mod widgets;
 
 use log::{debug, info};
+use search_engine::types::WrapInRcRefCell;
 use std::{cell::RefCell, rc::Rc};
 
 use config::{set_log_level, APP_ID};
@@ -32,7 +33,7 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
     // Set keyboard accelerator to trigger "win.close".
     app.set_accels_for_action("win.close", &["<Ctrl>W"]);
-    let main_window = Rc::new(RefCell::new(MainView::new()));
+    let main_window = MainView::new().wrap_and_clone();
     let main_controller = MainController::new(&main_window.borrow_mut());
 
     app.connect_activate(move |app| {
@@ -42,6 +43,7 @@ fn main() -> glib::ExitCode {
             &borrowed_main_view.folder_label,
             &borrowed_main_view.directory,
         );
+        main_controller.handle_search_clicked(&borrowed_main_view.input_view.search_button);
 
         borrowed_main_view.build_ui(&app)
     });

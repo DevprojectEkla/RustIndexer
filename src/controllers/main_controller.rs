@@ -1,13 +1,15 @@
 use std::collections::VecDeque;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use gtk::gio::{File, FileInfo};
+use gtk::glib::GString;
 use gtk::{glib::SignalHandlerId, prelude::*, ApplicationWindow, Button, Label, Window};
-use search_engine::index::index_all;
+use search_engine::index::Index;
+use search_engine::types::WrapInRcRefCell;
 use search_engine::utils::walk_dir;
 
 use crate::config::INDEX_FOLDER;
-use crate::types::{Controller, VecInfo, WrapInRcRefCell};
+use crate::types::{Controller, VecInfo};
 use crate::views::browse_view;
 use crate::views::main_view::{self, MainView};
 use crate::{models::index_model::StoredIndexModel, views::browse_view::BrowseView};
@@ -16,16 +18,16 @@ use log::{debug, info};
 pub struct MainController {
     main_view: MainView,
     browse_view: Option<BrowseView>,
-    model: StoredIndexModel,
     list_handler_id: Rc<RefCell<VecDeque<Rc<RefCell<Option<SignalHandlerId>>>>>>,
     data: String,
+    index: Rc<RefCell<Index>>,
 }
 impl Clone for MainController {
     fn clone(&self) -> Self {
         Self {
             main_view: self.main_view.clone(),
             browse_view: self.browse_view.clone(),
-            model: self.model.clone(),
+            index: self.index.clone(),
             list_handler_id: self.list_handler_id.clone(),
             data: self.data.clone(),
         }
@@ -33,16 +35,17 @@ impl Clone for MainController {
 }
 impl MainController {
     pub fn new(main_view: &MainView) -> Self {
-        let model = StoredIndexModel::new();
         let data = String::new();
         let browse_view = None;
         let main_view = main_view.clone();
+        let list = vec![String::new()];
+        let index = Rc::new(RefCell::new(Index::new(list)));
         let list_handler_id = Rc::new(RefCell::new(VecDeque::new()));
         Self {
             main_view,
             browse_view,
+            index,
             list_handler_id,
-            model,
             data,
         }
     }
@@ -63,7 +66,7 @@ impl MainController {
     /// the browse_init method instantiate a BrowseView struct attribute of the main controller
     fn browse_view_init(&mut self) {
         // if self.browse_view.is_none()
-        self.browse_view = Some(BrowseView::new(&self.model));
+        self.browse_view = Some(BrowseView::new());
     }
     fn handler_id_init(&mut self) {}
 
@@ -230,6 +233,7 @@ impl MainController {
     }
 
     pub fn handle_index_clicked(&self, dynamic_path: Rc<RefCell<String>>) -> SignalHandlerId {
+        let (rc_refcell_wrap_clone_self, self_cloned) = self.tuple_clones_before_closure();
         self.main_view.index_button.connect_clicked(move |_| {
             let borrowed_path = dynamic_path.borrow_mut();
             debug!(
@@ -237,7 +241,12 @@ impl MainController {
                 borrowed_path
             );
             let list_files = walk_dir(&borrowed_path.as_str());
-            index_all(list_files);
+            let borrowed = rc_refcell_wrap_clone_self.borrow_mut();
+            let mut borrowed_index_ref = borrowed.index.borrow_mut();
+            *borrowed_index_ref = Index::new(list_files);
+            borrowed_index_ref.index_all();
+            // let term = borrowed.index.idf_calculation("substance");
+            // println!("{:?}", term)
         })
     }
     fn set_index_directory_on_selection(&self, dir: &Rc<RefCell<Option<File>>>) {
@@ -275,7 +284,33 @@ impl MainController {
     ///This function defines the behaviour of the "browse" Button on click. It
 
     pub fn handle_search_clicked(&self, button: &Button) {
-        button.connect_clicked(|_| debug!("search button clicked"));
+        let (rc_refcell_wrap_clone_self, _) = self.tuple_clones_before_closure();
+        button.connect_clicked(move |_| {
+            let borrowed = rc_refcell_wrap_clone_self.borrow();
+            let input_view = &borrowed.main_view.input_view;
+            let user_input = input_view.search_entry.text();
+            input_view.output_screen.clear_buffer();
+
+            let user_input_cloned = user_input.clone();
+            let tf_idf = borrowed.index.borrow().idf_calculation(user_input.as_str());
+            println!("{:?}", tf_idf);
+            let mut vec_from_hash: Vec<(PathBuf, f32)> = tf_idf.into_iter().collect();
+            vec_from_hash.sort_by(|(_, v1), (_, v2)| {
+                v2.partial_cmp(v1).expect("the comparison should work fine")
+            });
+
+            for x in vec_from_hash {
+                let displayed_string = String::from("\n")
+                    + x.0.to_str().expect("ok for path to be converted into &str");
+                borrowed
+                    .main_view
+                    .input_view
+                    .update_screen(displayed_string.as_str())
+            }
+
+            debug!("TODO: start search_engine function here");
+            debug!("user input:{:?}", user_input_cloned);
+        });
     }
     pub fn handle_exit_clicked(&self, button: &Button, win: &ApplicationWindow) -> SignalHandlerId {
         let clone = win.clone();

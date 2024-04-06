@@ -1,7 +1,7 @@
 use crate::config::MIN_SCROLL_WINDOW_HEIGHT;
 use crate::log::{debug, info};
 use crate::models::index_model::StoredIndexModel;
-use crate::types::{Controller, StandardResult, WrapInRcRefCell};
+use crate::types::{Controller, StandardResult};
 use crate::widgets::screen::ScreenOutput;
 use core::cell::Cell;
 use gtk::gio::{Cancellable, File, FileEnumerator, FileInfo, FileQueryInfoFlags, FileType};
@@ -10,11 +10,11 @@ use gtk::{glib::*, DirectoryList, Label, ScrolledWindow, SingleSelection};
 use gtk::{prelude::*, Align};
 use gtk::{Button, SearchBar, SearchEntry, Window};
 use gtk::{ListItem, ListView, MultiSelection, SignalListItemFactory};
+use search_engine::types::WrapInRcRefCell;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-
 pub trait Data {
     type DataType;
     fn gather_data(&self, data: Self::DataType);
@@ -74,7 +74,7 @@ impl BrowseView {
     ///the dynamic_path variable which allows a browsing of the tree direcctory
     ///and retains the path to the directory we want to index with the
     ///index_button of the MainView
-    pub fn new(model: &StoredIndexModel) -> Self {
+    pub fn new() -> Self {
         let window = Window::new();
         let label_selected_folder = Label::new(Some("select a folder"));
         let hash_info_index = Rc::new(RefCell::new(HashMap::new()));

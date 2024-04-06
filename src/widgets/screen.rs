@@ -19,6 +19,8 @@ impl ScreenOutput {
         let text_view = TextView::new();
         text_view.set_editable(false);
         text_view.set_cursor_visible(false);
+        text_view.set_width_request(500);
+        text_view.set_height_request(500);
         // text_view.set_margin_top(5);
         // text_view.set_margin_bottom(5);
         // text_view.set_margin_end(2);
@@ -30,7 +32,8 @@ impl ScreenOutput {
         text_view.set_buffer(Some(&text_buffer));
 
         scroll_win.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-
+        scroll_win.set_min_content_width(400);
+        scroll_win.set_min_content_height(400);
         scroll_win.set_child(Some(&text_view));
         gtk_box.append(&label);
         gtk_box.append(&scroll_win);
@@ -48,5 +51,8 @@ impl ScreenOutput {
         let buffer = self.text_view.buffer();
         let iter = &mut buffer.end_iter();
         buffer.insert(iter, &data)
+    }
+    pub fn clear_buffer(&self) {
+        self.text_view.buffer().set_text("");
     }
 }

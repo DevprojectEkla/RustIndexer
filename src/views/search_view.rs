@@ -39,6 +39,8 @@ impl SearchView {
 
     pub fn build_ui(&self, main_window: &ApplicationWindow) {
         self.search_bar.connect_entry(&self.search_entry);
+        self.search_entry
+            .set_placeholder_text(Some("chercher par mot-clé"));
         self.search_bar.set_key_capture_widget(Some(main_window));
         self.gtk_box.append(&self.search_entry);
         self.gtk_box.append(&self.search_bar);
@@ -51,4 +53,5 @@ impl SearchView {
     pub fn update_screen(&self, data: &str) {
         self.output_screen.update_buffer(data)
     }
+    pub fn handle_connect_search_changed(&self) {}
 }
