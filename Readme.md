@@ -1,0 +1,1 @@
+RustIndexer is a GUI client using Gtk-rs for my back_end_indexer application. It allows indexing documents of a whole tree of directories and search them by keywords using the tf-idf formula. It is still pretty rudimentory. 

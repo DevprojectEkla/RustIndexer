@@ -10,7 +10,7 @@ edition = "2021"
 env_logger = "0.10.1"
 gtk = { version = "0.7.3", package = "gtk4", features = ["v4_12"] }
 log = "0.4.20"
-search_engine = { version = "0.1.0", path = "../search_engine" }
+back_end_indexer = { git = "https://github.com/DevprojectEkla/back_end_indexer.git", branch = "main" }
 # [package.metadata.docs.rs]
 # all-features = false
 # [exclude]
