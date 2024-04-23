@@ -1,5 +1,6 @@
 use search_engine::{
-    types::{IndexDoc, PseudoHash, TermFreq},
+    index::Index,
+    types::{FromJson, IndexDoc, PseudoHash, TermFreq},
     utils::generate_uid,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -22,28 +23,24 @@ impl<'a> IndexModel<'a> {
 }
 #[derive(Clone)]
 pub struct StoredIndexModel {
-    id: String,
-    data: IndexDoc,
+    pub id: String,
+    pub data: Index,
 }
 
 impl StoredIndexModel {
     pub fn new() -> Self {
         Self {
             id: generate_uid(),
-            data: HashMap::new(),
+            data: Index::from_json("data/_index-index.json").unwrap(),
         }
     }
 
-    pub fn find_index(&self, key: &str) -> IndexModel {
-        //TODO:Implement the logic
-        let path = PathBuf::from(key);
-        // let path = String::from(key)
-        let data = self.data.get(&path);
-        let path_string: String = path.to_string_lossy().into_owned();
-        IndexModel::new(
-            generate_uid(),
-            path_string,
-            data.expect("the value should be found for this key"),
-        )
-    }
+    //pub fn find_index(&self, key: &str) -> IndexModel {
+    //    //TODO:Implement the logic
+    //    let path = PathBuf::from(key);
+    //    // let path = String::from(key)
+    //    let data = self.data;
+    //    let path_string: String = path.to_string_lossy().into_owned();
+    //    IndexModel::new(generate_uid(), path_string, data.index)
+    //}
 }

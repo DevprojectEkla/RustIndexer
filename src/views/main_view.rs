@@ -24,7 +24,7 @@ use super::search_view::SearchView;
 #[derive(Clone)]
 pub struct MainView {
     pub input_view: SearchView,
-    model: Option<StoredIndexModel>,
+    pub model: Option<StoredIndexModel>,
     pub directory: Rc<RefCell<Option<File>>>,
     // browse_view: BrowseView,
     headerbar: CustomBar,
@@ -44,7 +44,7 @@ impl Controller for MainView {}
 impl MainView {
     pub fn new() -> Self {
         // let model = StoredIndexModel::new();
-        let model = None;
+        let model = Some(StoredIndexModel::new());
         let directory = Rc::new(RefCell::new(None));
         // let browse_view = BrowseView::new(&model);
 

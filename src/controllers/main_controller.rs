@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, path::PathBuf, rc::Rc, thread};
 
 use gtk::gio::{File, FileInfo};
 use gtk::glib::GString;
@@ -243,8 +244,25 @@ impl MainController {
             let list_files = walk_dir(&borrowed_path.as_str());
             let borrowed = rc_refcell_wrap_clone_self.borrow_mut();
             let mut borrowed_index_ref = borrowed.index.borrow_mut();
-            *borrowed_index_ref = Index::new(list_files);
-            borrowed_index_ref.index_all();
+            let index_instance = Index::new(list_files);
+            let atomic_ref_mutex = Arc::new(Mutex::new(index_instance.clone()));
+            let clone_mutex_for_thread = Arc::clone(&atomic_ref_mutex);
+
+            let index_task = thread::spawn(move || {
+                if let Ok(mut locked_mutex) = clone_mutex_for_thread.lock() {
+                    locked_mutex.index_all();
+                } else {
+                    eprintln!("Error locking Mutex")
+                }
+            });
+
+            // if let Err(e) = index_task.join() {
+            //     eprint!("Error joining the thread of the index task: {:?}", e)
+            // }
+            *borrowed_index_ref = index_instance;
+            // *borrowed_index_ref = Index::new(list_files);
+
+            // borrowed_index_ref.index_all();
             // let term = borrowed.index.idf_calculation("substance");
             // println!("{:?}", term)
         })
@@ -288,11 +306,19 @@ impl MainController {
         button.connect_clicked(move |_| {
             let borrowed = rc_refcell_wrap_clone_self.borrow();
             let input_view = &borrowed.main_view.input_view;
+            let default_index = &borrowed
+                .main_view
+                .model
+                .clone()
+                .expect("stored data in data/ directory not found")
+                .data;
+            debug!("{:?}", default_index);
             let user_input = input_view.search_entry.text();
             input_view.output_screen.clear_buffer();
 
             let user_input_cloned = user_input.clone();
-            let tf_idf = borrowed.index.borrow().idf_calculation(user_input.as_str());
+            let tf_idf = default_index.idf_calculation(user_input.as_str());
+            // let tf_idf = borrowed.index.borrow().idf_calculation(user_input.as_str());
             println!("{:?}", tf_idf);
             let mut vec_from_hash: Vec<(PathBuf, f32)> = tf_idf.into_iter().collect();
             vec_from_hash.sort_by(|(_, v1), (_, v2)| {
