@@ -333,9 +333,6 @@ impl MainController {
                     .input_view
                     .update_screen(displayed_string.as_str())
             }
-
-            debug!("TODO: start search_engine function here");
-            debug!("user input:{:?}", user_input_cloned);
         });
     }
     pub fn handle_exit_clicked(&self, button: &Button, win: &ApplicationWindow) -> SignalHandlerId {
